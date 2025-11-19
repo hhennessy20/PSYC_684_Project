@@ -7,7 +7,7 @@ from sklearn.metrics import roc_auc_score, balanced_accuracy_score, f1_score
 from xgboost import XGBClassifier
 import joblib
 
-import config
+from src import config
 
 
 def load_features(out_dir: Path):

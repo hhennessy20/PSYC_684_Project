@@ -7,7 +7,7 @@ from tqdm import tqdm
 from sklearn.preprocessing import StandardScaler
 import joblib
 
-import config
+from src import config
 
 
 def load_feature_csv(csv_path: Path) -> pd.Series:

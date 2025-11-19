@@ -1,14 +1,23 @@
 from pathlib import Path
 from typing import List, Dict
 from dataclasses import dataclass
+import torchaudio
+
+if not hasattr(torchaudio, "set_audio_backend"):
+    def _dummy_set_audio_backend(*args, **kwargs):
+        # no-op: pyannote expects this to exist, but modern torchaudio doesn't need it
+        return None
+    torchaudio.set_audio_backend = _dummy_set_audio_backend
 
 import numpy as np
 import soundfile as sf
 from tqdm import tqdm
 from pyannote.audio import Pipeline
 
-import config
+from src import config
 from .role_heuristics import assign_roles_by_duration
+
+
 
 
 @dataclass
@@ -26,7 +35,8 @@ def load_diarization_pipeline() -> Pipeline:
       export HF_TOKEN=...
     Then pyannote will use it internally if required.
     """
-    pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization")
+    
+    pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization",use_auth_token=config.HF_TOKEN)
     return pipeline
 
 

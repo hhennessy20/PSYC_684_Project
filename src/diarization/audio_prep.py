@@ -1,6 +1,6 @@
 from pathlib import Path
 import subprocess
-import config
+from src import config
 
 
 def standardize_audio(
@@ -38,4 +38,8 @@ def standardize_all_in_dir(
 if __name__ == "__main__":
     # Standardize both train and test audio in-place
     standardize_all_in_dir(config.TRAIN_AUDIO_DIR)
+    print(config.TRAIN_AUDIO_DIR)
+    print("[AUDIO] Standardization of training audio completed.")
     standardize_all_in_dir(config.TEST_AUDIO_DIR)
+    print(config.TEST_AUDIO_DIR)
+    print("[AUDIO] Standardization of test audio completed.")

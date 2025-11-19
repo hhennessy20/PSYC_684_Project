@@ -5,7 +5,7 @@ SRC_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SRC_DIR.parent
 
 # ADRESS_TRAIN_ROOT = Path("/mnt/D/STudy/RIT HW and Assignments/Graduate Speech Processing (PSYC 684)/Group project/ADReSS-IS2020-train/ADReSS-IS2020-data/train")
-ADRESS_TRAIN_ROOT = Path("/home/preritsm/MyWork/PSYC_684_Project/src/data/Train_Data")  # <-- EDIT THIS
+ADRESS_TRAIN_ROOT = Path("/home/preritsm/MyWork/PSYC_684_Project/data/train_Data")  # <-- EDIT THIS
 
 # ADReSS audio folders
 ADRESS_FULL_WAVE_DIR = ADRESS_TRAIN_ROOT / "Full_wave_enhanced_audio"
@@ -27,6 +27,9 @@ LABELS_CSV = DATA_DIR / "labels_train.csv"
 # Audio standardization
 TARGET_SR = 16000
 TARGET_CHANNELS = 1
+FFMPEG_BIN = "/usr/bin/ffmpeg"  # path to ffmpeg binary
+
+HF_TOKEN = "Add your token"  # HuggingFace token for pyannote models
 
 # Training settings
 RANDOM_SEED = 42
