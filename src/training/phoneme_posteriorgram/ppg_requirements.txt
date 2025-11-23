@@ -1,0 +1,6 @@
+ppgs
+soundfile
+matplotlib
+numpy
+pylangacq
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
