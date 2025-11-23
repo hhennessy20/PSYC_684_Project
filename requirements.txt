@@ -1,0 +1,11 @@
+numpy
+pandas
+scikit-learn
+xgboost
+pyannote.audio
+torch
+torchaudio
+soundfile
+tqdm
+joblib
+opensmile
