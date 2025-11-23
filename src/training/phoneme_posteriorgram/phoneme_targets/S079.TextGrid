@@ -1,0 +1,98 @@
+File type = "ooTextFile"
+Object class = "TextGrid"
+
+xmin = 0.0
+xmax = 80.231
+tiers? <exists>
+size = 1
+item []:
+	item [1]:
+		class = "IntervalTier"
+		name = "utterances"
+		xmin = 0.0
+		xmax = 80.231
+		intervals: size = 21
+			intervals [1]:
+				xmin = 0.0
+				xmax = 1.808
+				text = "INV: you see going on in the picture ."
+			intervals [2]:
+				xmin = 1.808
+				xmax = 3.609
+				text = "INV: tell me all the action ."
+			intervals [3]:
+				xmin = 3.609
+				xmax = 4.282
+				text = "PAR: mhm ."
+			intervals [4]:
+				xmin = 4.282
+				xmax = 5.096
+				text = "INV: okay ?"
+			intervals [5]:
+				xmin = 5.096
+				xmax = 10.6
+				text = "PAR: there's a young boy going in a cookie jar ."
+			intervals [6]:
+				xmin = 10.6
+				xmax = 13.143
+				text = "PAR: and there's a young girl ."
+			intervals [7]:
+				xmin = 13.143
+				xmax = 18.888
+				text = "PAR: and I'm saying he's a boy because it's hard to tell anymore ."
+			intervals [8]:
+				xmin = 18.888
+				xmax = 19.885
+				text = "INV: ."
+			intervals [9]:
+				xmin = 19.885
+				xmax = 23.542
+				text = "PAR: and he's in the cookie jar ."
+			intervals [10]:
+				xmin = 23.542
+				xmax = 30.444
+				text = "PAR: and there's a stool that he is on and it already is starting to fall over ."
+			intervals [11]:
+				xmin = 30.444
+				xmax = 36.811
+				text = "PAR: and so is the water in the sink is overflowing in the sink ."
+			intervals [12]:
+				xmin = 36.811
+				xmax = 39.837
+				text = "INV: okay anything else ?"
+			intervals [13]:
+				xmin = 39.837
+				xmax = 45.689
+				text = "PAR: I don't know about this hickey here whether that's more than what I said ."
+			intervals [14]:
+				xmin = 45.689
+				xmax = 52.722
+				text = "PAR: like the mother is near the girl ."
+			intervals [15]:
+				xmin = 52.722
+				xmax = 58.25
+				text = "PAR: and she has /."
+			intervals [16]:
+				xmin = 58.25
+				xmax = 64.444
+				text = "PAR: oh I can't think of the ..."
+			intervals [17]:
+				xmin = 64.444
+				xmax = 71.01
+				text = "PAR: she has the she's trying to wipe dishes ."
+			intervals [18]:
+				xmin = 71.01
+				xmax = 71.809
+				text = "INV: okay ."
+			intervals [19]:
+				xmin = 71.809
+				xmax = 74.738
+				text = "PAR: oh and stop the water from going out ."
+			intervals [20]:
+				xmin = 74.738
+				xmax = 76.386
+				text = "INV: okay ."
+			intervals [21]:
+				xmin = 76.386
+				xmax = 80.231
+				text = "INV: okay good ."
