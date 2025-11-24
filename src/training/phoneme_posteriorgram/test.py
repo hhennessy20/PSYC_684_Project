@@ -14,20 +14,15 @@ def clean_tokens(tokens):
 def process_filereader(corpus, out_dir_textgrid, wav_dir):
     os.makedirs(out_dir_textgrid, exist_ok=True)
 
-    # Get list of .cha files the reader has loaded
-    cha_files = list(corpus._file_paths.keys())
 
-    for cha_path in cha_files:
+    for subreader in corpus:
+        
+        cha_path = subreader.file_paths()[0]
         stem = os.path.splitext(os.path.basename(cha_path))[0]
-        wav_path = os.path.join(wav_dir, stem + ".wav")
-
-        if not os.path.exists(wav_path):
-            print(f"[WARNING] No matching WAV for {stem}, skipping.")
-            continue
 
         print(f"Processing {cha_path} → {stem}.TextGrid")
 
-        utterances = corpus.utterances(files=[cha_path])
+        utterances = subreader.utterances()
 
         tg = TextGrid(minTime=0.0, maxTime=None)
         tier = IntervalTier(name="utterances")
@@ -39,6 +34,14 @@ def process_filereader(corpus, out_dir_textgrid, wav_dir):
             start, end = utt.time_marks
             start = float(start) / 1000 if start > 1000 else float(start)
             end   = float(end)   / 1000 if end   > 1000 else float(end)
+            
+            if tier.intervals:
+                prev_end = tier.intervals[-1].maxTime
+                if start < prev_end:
+                    start = prev_end + 0.001  # avoid overlap by nudging forward
+
+            if end <= start:
+                end = start + 0.001
 
             text = clean_tokens(utt.tokens)
             if not text:
@@ -68,6 +71,5 @@ if __name__ == "__main__":
     out_dir_textgrid = "src/training/phoneme_posteriorgram/phoneme_targets"
 
     corpus = pylangacq.read_chat(cha_dir)  # returns a FileReader object for the whole directory
-    for subreader in corpus:
-        print(type(subreader), subreader._files)
-    # process_filereader(corpus, out_dir_textgrid, wav_dir)
+    
+    process_filereader(corpus, out_dir_textgrid, wav_dir)
