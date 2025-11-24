@@ -3,4 +3,5 @@ soundfile
 matplotlib
 numpy
 pylangacq
+textgrid
 # pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126

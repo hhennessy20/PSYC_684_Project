@@ -14,9 +14,7 @@ def clean_tokens(tokens):
 def process_filereader(corpus, out_dir_textgrid, wav_dir):
     os.makedirs(out_dir_textgrid, exist_ok=True)
 
-
     for subreader in corpus:
-        
         cha_path = subreader.file_paths()[0]
         stem = os.path.splitext(os.path.basename(cha_path))[0]
 
@@ -24,39 +22,58 @@ def process_filereader(corpus, out_dir_textgrid, wav_dir):
 
         utterances = subreader.utterances()
 
+        # --- Create empty TextGrid ---
         tg = TextGrid(minTime=0.0, maxTime=None)
-        tier = IntervalTier(name="utterances")
+
+        # --- Prepare dynamic tiers for each speaker ---
+        tiers = {}   # {participant_name: IntervalTier}
 
         for utt in utterances:
-            if utt.time_marks is None or utt.time_marks[0] is None or utt.time_marks[1] is None:
+
+            # Skip utterances without timestamps
+            if not utt.time_marks or utt.time_marks[0] is None or utt.time_marks[1] is None:
                 continue
 
             start, end = utt.time_marks
-            start = float(start) / 1000 if start > 1000 else float(start)
-            end   = float(end)   / 1000 if end   > 1000 else float(end)
-            
-            if tier.intervals:
-                prev_end = tier.intervals[-1].maxTime
-                if start < prev_end:
-                    start = prev_end + 0.001  # avoid overlap by nudging forward
+
+            # Convert ms → seconds if needed
+            start = float(start) 
+            end   = float(end) 
 
             if end <= start:
-                end = start + 0.001
+                end = start + 0.001  # prevent zero-length intervals
 
+            # Clean transcript tokens
             text = clean_tokens(utt.tokens)
             if not text:
                 continue
 
-            label = f"{utt.participant}: {text}"
-            tier.addInterval(Interval(start, end, label))
+            speaker = utt.participant  # "INV", "PAR", etc.
 
-        if tier.intervals:
-            tg.maxTime = max(iv.maxTime for iv in tier.intervals)
-        else:
-            tg.maxTime = 0.0
+            # Create tier if this speaker has not appeared yet
+            if speaker not in tiers:
+                tiers[speaker] = IntervalTier(name=speaker)
 
-        tg.append(tier)
+            tier = tiers[speaker]
 
+            # Avoid overlap in a speaker tier (MFA requires no overlaps)
+            if tier.intervals:
+                prev_end = tier.intervals[-1].maxTime
+                if start < prev_end:
+                    start = prev_end + 0.001
+
+            # Add interval with ONLY the actual text
+            tier.addInterval(Interval(start, end, text))
+
+        # Finish building the TextGrid
+        all_intervals = []
+        for t in tiers.values():
+            tg.append(t)
+            all_intervals.extend(t.intervals)
+
+        tg.maxTime = max((iv.maxTime for iv in all_intervals), default=0.0)
+
+        # Save result
         out_tg = os.path.join(out_dir_textgrid, f"{stem}.TextGrid")
         with open(out_tg, "w", encoding="utf-8") as f:
             tg.write(f)
@@ -65,10 +82,15 @@ def process_filereader(corpus, out_dir_textgrid, wav_dir):
 
 
 if __name__ == "__main__":
+    
+    #
+    #   Run this once in order to preprocess your transcripts for 
+    #   forced alignment input
+    #
 
     cha_dir = "src/data/train/transcription/cd"
     wav_dir = "src/data/train/Full_wave_enhanced_audio/cd"
-    out_dir_textgrid = "src/training/phoneme_posteriorgram/phoneme_targets"
+    out_dir_textgrid = "src/data/train/Full_wave_enhanced_audio/cd"
 
     corpus = pylangacq.read_chat(cha_dir)  # returns a FileReader object for the whole directory
     
