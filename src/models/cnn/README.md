@@ -1,0 +1,1 @@
+In order to run, make sure train_adress_cnn.pt is placed in the same folder as the test and train folders from the ADReSS dataset
