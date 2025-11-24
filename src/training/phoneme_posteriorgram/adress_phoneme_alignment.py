@@ -10,63 +10,66 @@ def clean_tokens(tokens):
         cleaned.append(tok.word)
     return " ".join(cleaned).strip()
 
-if __name__ == "__main__":
-    
-    # Extracts utterances
-    # corpus = pylangacq.read_chat("src\\data\\train\\transcription\\cd\\S079.cha")    #single file for testing
-    corpus = pylangacq.read_chat("src\\data\\train\\transcription\\cd")    # whole directory
-    
-    ## NEED REST OF CODE TO WORK WITH A pylangacq filereader object
-    wav_path = "src\\data\\train\\Full_wave_enhanced_audio\\cd\\S079.wav"
 
-    utterances = corpus.utterances()  # yields dicts with speaker, tier, timestamp, etc.
-    
-    
-    out_textgrid = "src\\training\\phoneme_posteriorgram\\phoneme_targets\\S079.TextGrid"
-    # Create TextGrid
-    tg = TextGrid(minTime=0.0, maxTime=None)
+def process_filereader(corpus, out_dir_textgrid, wav_dir):
+    os.makedirs(out_dir_textgrid, exist_ok=True)
 
-    # One tier for the whole conversation (or split by speaker if you prefer)
-    tier = IntervalTier(name="utterances")
 
-    for i, utt in enumerate(utterances):
-        # Utterance object fields:
-        #   utt.participant -> speaker code (e.g., "INV", "PAR")
-        #   utt.tokens -> list of Token objects
-        #   utt.time_marks -> (start, end)
+    for subreader in corpus:
         
-        # Skip utterances with no timestamps
-        if utt.time_marks is None or utt.time_marks[0] is None or utt.time_marks[1] is None:
-            continue
+        cha_path = subreader.file_paths()[0]
+        stem = os.path.splitext(os.path.basename(cha_path))[0]
 
-        start, end = utt.time_marks
-        start = float(start) / 1000 if start > 1000 else float(start)   # ADReSS timestamps sometimes in ms
-        end   = float(end)   / 1000 if end   > 1000 else float(end)
+        print(f"Processing {cha_path} → {stem}.TextGrid")
 
-        # Build text from tokens
-        # text = " ".join(tok.word for tok in utt.tokens).strip()
-        text = clean_tokens(utt.tokens)
+        utterances = subreader.utterances()
 
-        # Empty text? Skip
-        if not text:
-            continue
+        tg = TextGrid(minTime=0.0, maxTime=None)
+        tier = IntervalTier(name="utterances")
 
-        # Label includes speaker + text
-        label = f"{utt.participant}: {text}"
+        for utt in utterances:
+            if utt.time_marks is None or utt.time_marks[0] is None or utt.time_marks[1] is None:
+                continue
 
-        tier.addInterval(Interval(start, end, label))
+            start, end = utt.time_marks
+            start = float(start) / 1000 if start > 1000 else float(start)
+            end   = float(end)   / 1000 if end   > 1000 else float(end)
+            
+            if tier.intervals:
+                prev_end = tier.intervals[-1].maxTime
+                if start < prev_end:
+                    start = prev_end + 0.001  # avoid overlap by nudging forward
 
-    # Finalize TextGrid
-    # Infer maxTime from last interval
-    if len(tier.intervals) > 0:
-        tg.maxTime = max(iv.maxTime for iv in tier.intervals)
-    else:
-        tg.maxTime = 0.0
+            if end <= start:
+                end = start + 0.001
 
-    tg.append(tier)
+            text = clean_tokens(utt.tokens)
+            if not text:
+                continue
 
-    # Save TextGrid
-    with open(out_textgrid, "w", encoding="utf-8") as f:
-        tg.write(f)
+            label = f"{utt.participant}: {text}"
+            tier.addInterval(Interval(start, end, label))
 
-    print(f"Saved TextGrid to {out_textgrid}")
+        if tier.intervals:
+            tg.maxTime = max(iv.maxTime for iv in tier.intervals)
+        else:
+            tg.maxTime = 0.0
+
+        tg.append(tier)
+
+        out_tg = os.path.join(out_dir_textgrid, f"{stem}.TextGrid")
+        with open(out_tg, "w", encoding="utf-8") as f:
+            tg.write(f)
+
+        print(f"Saved TextGrid: {out_tg}")
+
+
+if __name__ == "__main__":
+
+    cha_dir = "src/data/train/transcription/cd"
+    wav_dir = "src/data/train/Full_wave_enhanced_audio/cd"
+    out_dir_textgrid = "src/training/phoneme_posteriorgram/phoneme_targets"
+
+    corpus = pylangacq.read_chat(cha_dir)  # returns a FileReader object for the whole directory
+    
+    process_filereader(corpus, out_dir_textgrid, wav_dir)
