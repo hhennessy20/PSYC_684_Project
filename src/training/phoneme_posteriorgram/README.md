@@ -16,7 +16,9 @@ ADReSS phoneme alignments from montreal forced aligner
 
 fine_tune_ppg.ipynb
 
-1. Train baseline ppg using ppg\[train\] (module)
+Follow these instructions: https://github.com/interactiveaudiolab/ppgs/tree/master#training
+
+1. Train baseline ppg using ppg\[train\] (module) and ffmpeg
     a. Evaluate, store metrics
 2. Fine tune ppg using your phoneme alignments from step 1.
     a. Evaluate, compare with baseline

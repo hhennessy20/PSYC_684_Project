@@ -1,7 +1,11 @@
 ppgs
+ppgs[train]
 soundfile
 matplotlib
 numpy
 pylangacq
 textgrid
+# conda install -c conda-forge ffmpeg
+
+# MUST install correct torch for your system
 # pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
