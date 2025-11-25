@@ -1,4 +1,7 @@
-/data/*
+/data/**
+!data/
+!data/*.*
+!data/*
 /adclass
 req.txt
 __pycache__/
