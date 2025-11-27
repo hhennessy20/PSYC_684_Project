@@ -41,7 +41,8 @@ LABELS_CSV = DATA_DIR / "labels_train.csv"
 # -----------------------------
 TARGET_SR = 16000
 TARGET_CHANNELS = 1
-FFMPEG_BIN = "/usr/bin/ffmpeg" 
+#FFMPEG_BIN = "/usr/bin/ffmpeg" 
 
 RANDOM_SEED = 42
 N_JOBS = -1
+
