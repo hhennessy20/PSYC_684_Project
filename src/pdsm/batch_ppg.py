@@ -10,11 +10,12 @@ import os, sys
 # assert ffmpeg_dll_dir.exists(), ffmpeg_dll_dir
 # os.add_dll_directory(str(ffmpeg_dll_dir))
 
-import torch, torchcodec, platform, subprocess
-print("exe:", sys.executable)
-print("torch", torch.__version__, "torchcodec", torchcodec.__version__, "py", platform.python_version())
-subprocess.run(["ffmpeg", "-version"], check=True)
+# import torch, torchcodec, platform, subprocess
+# print("exe:", sys.executable)
+# print("torch", torch.__version__, "torchcodec", torchcodec.__version__, "py", platform.python_version())
+# subprocess.run(["ffmpeg", "-version"], check=True)
 
+import torch
 import ppgs
 import argparse
 import matplotlib.pyplot as plt
