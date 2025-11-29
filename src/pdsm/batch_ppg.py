@@ -1,21 +1,17 @@
 #
 # For docs: https://github.com/interactiveaudiolab/ppgs/tree/master
 #
-
 from pathlib import Path
 import os, sys
 
 # Fixes torchcodec and ffmpeg issues
-# ffmpeg_dll_dir = Path(r"C:/Users/jackm/miniconda3/Library/bin")
-# assert ffmpeg_dll_dir.exists(), ffmpeg_dll_dir
-# os.add_dll_directory(str(ffmpeg_dll_dir))
+ffmpeg_dll_dir = Path(r"C:/Users/jackm/miniconda3/Library/bin")  # adjust if your conda root differs
+assert ffmpeg_dll_dir.exists(), ffmpeg_dll_dir
+os.add_dll_directory(str(ffmpeg_dll_dir))
 
-# import torch, torchcodec, platform, subprocess
-# print("exe:", sys.executable)
-# print("torch", torch.__version__, "torchcodec", torchcodec.__version__, "py", platform.python_version())
-# subprocess.run(["ffmpeg", "-version"], check=True)
-
+import os
 import torch
+import torchcodec
 import ppgs
 import argparse
 import matplotlib.pyplot as plt
@@ -38,37 +34,34 @@ def plot_ppg(ppgs_tensor, wav_filename, out_dir):
     plt.savefig(f"{out_dir}/ppg_plot_{wav_filename}.png")
     
 def load_wav_to_tensor(wav_dir):
-    """Load WAV files in the given directory into a tensor of shape (num_files, 1, audio_frames). Return source paths for filename matching when saving."""
+    """Load WAV files in the given directory into a tensor of shape
+    (num_files, 1, audio_frames). Return source paths for filename matching when saving.
+    """
     wav_audio = []
     wav_paths = []
 
-    # Walk the directory
     for root, dirs, files in os.walk(wav_dir):
         for file in files:
             if file.lower().endswith(".wav"):
                 wav_path = os.path.join(root, file)
                 wav_paths.append(wav_path)
 
-                # Load speech audio at correct sample rate
-                audio = ppgs.load.audio(wav_path)  # expected 1D array
+                # Load speech audio at correct sample rate (1D array expected).
+                audio = ppgs.load.audio(wav_path)
+                # print(wav_path, f"shape: {audio.shape}")
                 wav_audio.append(np.asarray(audio))
 
-    if len(wav_audio) == 0:
+    if not wav_audio:
         raise ValueError("No WAV files found in directory.")
 
-    # Find max length to pad to
-    max_len = max(a.shape[0] for a in wav_audio)
+    # Pad to max length
+    max_len = max(a.shape[1] for a in wav_audio)
+    padded = [np.pad(a, (0, max_len - a.shape[1])) if a.shape[1] < max_len else a
+              for a in wav_audio]
 
-    # Pad all audio to same length
-    padded = []
-    for a in wav_audio:
-        if a.shape[0] < max_len:
-            pad_width = max_len - a.shape[0]
-            a = np.pad(a, (0, pad_width))
-        padded.append(a)
-
-    # Convert to tensor: (num_files, 1, audio_frames)
-    wav_tensor = torch.tensor(padded, dtype=torch.float32).unsqueeze(1)
+    # Convert list → single NumPy array → tensor
+    padded_np = np.array(padded, dtype=np.float32)  # (num_files, audio_frames)
+    wav_tensor = torch.from_numpy(padded_np).unsqueeze(1)  # → (num_files, 1, audio_frames)
 
     return wav_tensor, wav_paths
 
