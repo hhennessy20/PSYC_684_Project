@@ -10,6 +10,7 @@ from captum.attr import GradientShap
 
 from train_adress_cnn import ADRESSSpectrogramDataset, AudioCNN, set_seed
 
+
 def crop_to_speech(spec_np, attr_np, eps=1e-4):
     """
     Crop zero-padded/silent time frames from visualization based on padding floor.
@@ -26,6 +27,7 @@ def crop_to_speech(spec_np, attr_np, eps=1e-4):
 
     last = idxs[-1]
     return spec_np[:, : last + 1], attr_np[:, : last + 1]
+
 
 class WrappedModel(torch.nn.Module):
     """
@@ -44,7 +46,7 @@ class WrappedModel(torch.nn.Module):
 def compute_gradshap(model, batch_specs, device,
                      n_baseline=8, n_samples=32, stdevs=0.09):
     """
-    Computes gradSHAP attributions.
+    Computes GradSHAP attributions.
 
     batch_specs: (B, 1, n_mels, T)
     Returns attributions: (B, 1, n_mels, T) on CPU.
@@ -54,7 +56,7 @@ def compute_gradshap(model, batch_specs, device,
 
     gradshap = GradientShap(wrapped)
 
-    # Account for noise
+    # Account for noise in baselines
     baseline = torch.zeros_like(batch_specs[0:1]).repeat(n_baseline, 1, 1, 1)
     baseline += 0.01 * torch.randn_like(baseline)
 
@@ -67,6 +69,7 @@ def compute_gradshap(model, batch_specs, device,
     )
     return attributions.detach().cpu()
 
+
 def plot_pair(spec, attr, label, prob, outpath):
     """
     Plots with color map for AD vs. CN.
@@ -78,7 +81,7 @@ def plot_pair(spec, attr, label, prob, outpath):
     spec_np = spec.squeeze(0).numpy()
     attr_np = attr.squeeze(0).numpy()
 
-    # Crop padded frames & silence
+    # Crop padded frames & silence (for visualization only)
     spec_np, attr_np = crop_to_speech(spec_np, attr_np)
 
     # Normalization for colormap
@@ -116,6 +119,136 @@ def plot_pair(spec, attr, label, prob, outpath):
     outpath.parent.mkdir(exist_ok=True, parents=True)
     plt.savefig(outpath, dpi=200)
     plt.close(fig)
+
+
+
+def get_saliency_maps_for_pdsm(
+    train_root: str | Path = "train/Normalised_audio-chunks",
+    model_ckpt: str | Path = "best_adress_cnn.pt",
+    val_split: float = 0.2,
+    batch_size: int = 32,
+    num_examples: int = 4,
+    device: torch.device | None = None,
+):
+    """
+    Function to obtain GradSHAP saliency maps M for
+    correctly classified validation examples, suitable as input for PDSM
+
+    returns results : list[dict]
+        Each dict has:
+            'M'      : np.ndarray of shape (n_mels, T)
+                       GradSHAP saliency map for this example.
+            'spec'   : np.ndarray of shape (n_mels, T)
+                       normalized log-mel spectrogram used as input.
+            'label'  : int
+                       0 = CN (control), 1 = AD.
+            'p_ad'   : float
+                       model's predicted P(AD) for this chunk.
+    """
+    set_seed(42)
+
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    train_root = Path(train_root)
+
+    # Rebuild validation set exactly as in main()
+    ds = ADRESSSpectrogramDataset(train_root)
+    subject_ids = np.array(ds.subject_ids)
+    unique = np.unique(subject_ids)
+
+    rng = np.random.default_rng(42)
+    rng.shuffle(unique)
+    val_n = max(1, int(len(unique) * val_split))
+    val_subs = set(unique[:val_n])
+
+    val_inds = [i for i, sid in enumerate(subject_ids) if sid in val_subs]
+    val_set = Subset(ds, val_inds)
+
+    val_loader = DataLoader(
+        val_set,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=(device.type == "cuda"),
+    )
+
+    # Construct classifier and load weights
+    model = AudioCNN(n_mels=64).to(device)
+    with torch.no_grad():
+        dummy_spec, _ = ds[0]
+        dummy_spec = dummy_spec.unsqueeze(0).to(device)
+        _ = model(dummy_spec)
+
+    state_dict = torch.load(model_ckpt, map_location=device)
+    model.load_state_dict(state_dict)
+    model.eval()
+
+    # Collect correctly classified examples from val set
+    correct_examples = []
+
+    with torch.no_grad():
+        for specs, labels in val_loader:
+            specs = specs.to(device)
+            labels = labels.to(device)
+
+            logits = model(specs)
+            probs = torch.sigmoid(logits)
+            preds = (probs >= 0.5).float()
+
+            for i in range(specs.size(0)):
+                label = float(labels[i].item())
+                pred = float(preds[i].item())
+                p_ad = float(probs[i].item())
+
+                if pred == label:
+                    spec_cpu = specs[i].detach().cpu()
+                    label_int = int(label)
+                    correct_examples.append((spec_cpu, label_int, p_ad))
+
+    if not correct_examples:
+        return []
+
+    # Split into CN and AD and pick top-K by confidence
+    cn_examples = [ex for ex in correct_examples if ex[1] == 0]
+    ad_examples = [ex for ex in correct_examples if ex[1] == 1]
+
+    if len(cn_examples) == 0 and len(ad_examples) == 0:
+        return []
+
+    cn_sorted = sorted(cn_examples, key=lambda ex: ex[2])
+    ad_sorted = sorted(ad_examples, key=lambda ex: ex[2], reverse=True)
+
+    k = num_examples
+    cn_top = cn_sorted[:k] if cn_sorted else []
+    ad_top = ad_sorted[:k] if ad_sorted else []
+
+    all_selected = cn_top + ad_top
+    if not all_selected:
+        return []
+
+    specs_tensor = torch.stack([ex[0] for ex in all_selected], dim=0)
+    attrs_tensor = compute_gradshap(model, specs_tensor, device)
+
+    # Build result list with raw M (no cropping, no abs, no thresholding)
+    results = []
+    for spec, attr, (_, label_int, p_ad) in zip(
+        specs_tensor, attrs_tensor, all_selected
+    ):
+        spec_np = spec.squeeze(0).cpu().numpy()   # (n_mels, T)
+        M_np = attr.squeeze(0).cpu().numpy()      # (n_mels, T)
+
+        results.append(
+            {
+                "M": M_np,
+                "spec": spec_np,
+                "label": int(label_int),
+                "p_ad": float(p_ad),
+            }
+        )
+
+    return results
+
 
 def main():
     parser = argparse.ArgumentParser()
