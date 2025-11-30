@@ -34,66 +34,6 @@ def plot_ppg(ppgs_tensor, wav_filename, out_dir):
     plt.title('Phonetic Posteriorgram (PPG)')
     plt.savefig(f"{out_dir}/ppg_plot_{wav_filename}.png")
     
-def load_wav_to_tensor(wav_dir):
-    """Load WAV files in the given directory into a tensor of shape
-    (num_files, 1, audio_frames). Return source paths for filename matching when saving.
-    """
-    print("loading wavs")
-    wav_audio = []
-    wav_paths = []
-
-    for root, dirs, files in os.walk(wav_dir):
-        for file in files:
-            if file.lower().endswith(".wav"):
-                wav_path = os.path.join(root, file)
-                wav_paths.append(wav_path)
-
-                # Load speech audio at correct sample rate (1D array expected).
-                audio = ppgs.load.audio(wav_path)
-                # print(wav_path, f"shape: {audio.shape}")
-                wav_audio.append(np.asarray(audio))
-
-    if not wav_audio:
-        raise ValueError("No WAV files found in directory.")
-
-    # Pad to max length
-    max_len = max(a.shape[1] for a in wav_audio)
-
-    padded = [
-        np.pad(a, ((0, 0), (0, max_len - a.shape[1]))) if a.shape[1] < max_len else a
-        for a in wav_audio
-    ]
-
-    # Convert list → single NumPy array → tensor
-    padded_np = np.stack(padded, axis=0)  # shape: [N, 1, max_len]
-    wav_tensor = torch.from_numpy(padded_np)  # → (num_files, 1, audio_frames)
-
-    return wav_tensor, wav_paths
-
-def save_ppgs_per_file(ppg_tensor, wav_paths, out_dir, savePlots=False):
-    """
-    ppg_tensor: (num_files, num_phonemes, frames)
-    wav_paths: list of original WAV filepaths in same order
-    """
-    
-    os.makedirs(out_dir, exist_ok=True)
-    
-    print("saving ppgs .pt files")
-    for i, wav_path in enumerate(wav_paths):
-        base = os.path.splitext(os.path.basename(wav_path))[0]
-        out_path = os.path.join(out_dir, base + "_ppg.pt")
-
-        torch.save(ppg_tensor[i], out_path)
-        
-        # Save image 
-    
-    if savePlots:
-        print("saving ppg plots")
-        for i, wav_path in enumerate(wav_paths):
-            base = os.path.splitext(os.path.basename(wav_path))[0]
-
-            plot_ppg(ppg_tensor[i], base, out_dir)
-        
     
 def generate_ppgs(wav_dir,  output_dir, gpu_idx=None, savePlot=False):
     """https://github.com/interactiveaudiolab/ppgs/tree/master"""
