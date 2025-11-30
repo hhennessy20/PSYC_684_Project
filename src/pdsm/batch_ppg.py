@@ -99,8 +99,11 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
-
-    output_dir_cd = os.path.join(args.output_dir, "cd")
+    parent, folder = os.path.split(args.wav_dir_root)
+    output_dir_cd = os.path.join(args.output_dir, folder + "cd")
+    if not os.path.isdir(output_dir_cd):
+        raise FileNotFoundError(f"Output directory does not exist: {output_dir_cd}. Input directory must contain both 'cc' and 'cd' directories.")
+    
     # PPGS for AD postive
     generate_ppgs(
         os.path.join(args.wav_dir_root, "cd"),
@@ -108,7 +111,10 @@ def main():
         )
     
     
-    output_dir_cc = os.path.join(args.output_dir, "cc")
+    output_dir_cc = os.path.join(args.output_dir, folder + "cc")
+    if not os.path.isdir(output_dir_cc):
+        raise FileNotFoundError(f"Output directory does not exist: {output_dir_cc}. Input directory must contain both 'cc' and 'cd' directories.")
+    
     # PPGS for AD negative (control)
     generate_ppgs(
         os.path.join(args.wav_dir_root, "cc"),
