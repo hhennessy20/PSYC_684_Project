@@ -10,73 +10,63 @@ import torchaudio
 from torch import nn
 from torch.utils.data import Dataset, DataLoader, Subset
 
-# Random seed for reproducibility
+
+# Seed
 def set_seed(seed: int = 42):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-# ADReSS loading class
+
+# Shared constants
+SAMPLE_RATE = 16000
+N_MELS = 64
+N_FFT = 400
+HOP_LENGTH = 160
+DURATION_SEC = 8.0
+
+
+# Base dataset: one random window per file
 class ADRESSSpectrogramDataset(Dataset):
-    """
-    Loads ADReSS Normalised_audio-chunks and turns them into log-mel spectrograms.
-
-    Expects structure:
-        root_dir/
-            cc/
-                *.wav
-            cd/
-                *.wav
-
-    Labels:
-        cc -> 0 (healthy/control)
-        cd -> 1 (AD)
-
-    Speaker IDs:
-        Each speaker is defined by the first four characters of the filename stem,
-        e.g. 'S001_xxx.wav' -> 'S001'
-    """
-
+    # expects:
+    #   root/cc/*.wav
+    #   root/cd/*.wav
     def __init__(
         self,
         root_dir: Path,
-        sample_rate: int = 16000,
-        n_mels: int = 64,
-        n_fft: int = 1024,
-        hop_length: int = 512,
-        duration_sec: float = 8.0,
+        sample_rate: int = SAMPLE_RATE,
+        n_mels: int = N_MELS,
+        n_fft: int = N_FFT,
+        hop_length: int = HOP_LENGTH,
+        duration_sec: float = DURATION_SEC,
     ):
         self.root_dir = Path(root_dir)
         self.sample_rate = sample_rate
         self.duration_sec = duration_sec
         self.num_samples = int(sample_rate * duration_sec)
 
-        self.label_map = {
-            "cc": 0,  # healthy
-            "cd": 1,  # alzheimer's
-        }
+        self.label_map = {"cc": 0, "cd": 1}
 
         self.samples: List[Tuple[Path, int]] = []
         self.subject_ids: List[str] = []
         self.labels: List[int] = []
 
         for label_name, label_id in self.label_map.items():
-            class_dir = self.root_dir / label_name
-            if not class_dir.is_dir():
+            d = self.root_dir / label_name
+            if not d.is_dir():
                 continue
-            for wav_path in sorted(class_dir.rglob("*.wav")):
-                subj_id = self._get_subject_id_from_path(wav_path)
-                self.samples.append((wav_path, label_id))
-                self.subject_ids.append(subj_id)
+            for wav in sorted(d.rglob("*.wav")):
+                sid = wav.stem[:4]
+                self.samples.append((wav, label_id))
+                self.subject_ids.append(sid)
                 self.labels.append(label_id)
 
         if len(self.samples) == 0:
             raise RuntimeError(f"No .wav files found under {self.root_dir}")
 
-        # Convert to Mel Spectrogram
-        self.mel_spec = torchaudio.transforms.MelSpectrogram(
-            sample_rate=self.sample_rate,
+        self.mel = torchaudio.transforms.MelSpectrogram(
+            sample_rate=sample_rate,
             n_fft=n_fft,
             hop_length=hop_length,
             n_mels=n_mels,
@@ -84,111 +74,174 @@ class ADRESSSpectrogramDataset(Dataset):
             power=2.0,
         )
 
-    # Split samples by speaker to prevent overlap
-    @staticmethod
-    def _get_subject_id_from_path(path: Path) -> str:
-        stem = path.stem
-        if len(stem) < 4:
-            raise ValueError(f"Filename too short to contain speaker ID: {path.name}")
-        return stem[:4]
-
     def __len__(self) -> int:
         return len(self.samples)
 
-    # Loads and preprocesses audio
-    def _load_audio(self, path: Path) -> torch.Tensor:
+    # random crop loader
+    def _load_audio_random(self, path: Path) -> torch.Tensor:
         waveform, sr = torchaudio.load(path)
-        # Convert to mono audio
         if waveform.size(0) > 1:
             waveform = waveform.mean(dim=0, keepdim=True)
-
-        # Resample if needed
         if sr != self.sample_rate:
-            resampler = torchaudio.transforms.Resample(sr, self.sample_rate)
-            waveform = resampler(waveform)
+            waveform = torchaudio.transforms.Resample(sr, self.sample_rate)(waveform)
 
-        # Pad/trim to fixed length
-        num_current = waveform.size(1)
-        if num_current < self.num_samples:
-            pad_amount = self.num_samples - num_current
-            waveform = torch.nn.functional.pad(waveform, (0, pad_amount))
-        elif num_current > self.num_samples:
-            start = (num_current - self.num_samples) // 2
+        n = waveform.size(1)
+        if n < self.num_samples:
+            pad = self.num_samples - n
+            waveform = torch.nn.functional.pad(waveform, (0, pad))
+        elif n > self.num_samples:
+            start = random.randint(0, n - self.num_samples)
             waveform = waveform[:, start:start + self.num_samples]
 
         return waveform
 
-    # Converts to mel spectrogram
     def __getitem__(self, idx: int):
-        wav_path, label = self.samples[idx]
-        waveform = self._load_audio(wav_path)
-
-        # Mel spectrogram
-        spec = self.mel_spec(waveform)  # (1, n_mels, T)
+        path, label = self.samples[idx]
+        w = self._load_audio_random(path)
+        spec = self.mel(w)
         spec = torch.log(spec + 1e-9)
+        spec = (spec - spec.mean()) / (spec.std() + 1e-8)
+        return spec, torch.tensor(label, dtype=torch.float32)
 
-        # Normalize per example
-        mean = spec.mean()
-        std = spec.std()
-        spec = (spec - mean) / (std + 1e-8)
 
-        label_t = torch.tensor(label, dtype=torch.float32)
-        return spec, label_t
-    
-# CNN model definition
+# repeats each file K times per epoch (train only)
+class RepeatedDataset(Dataset):
+    def __init__(self, base_ds: Dataset, repeats_per_file: int = 4):
+        self.base = base_ds
+        self.repeats = repeats_per_file
+
+    def __len__(self) -> int:
+        return len(self.base) * self.repeats
+
+    def __getitem__(self, idx: int):
+        return self.base[idx // self.repeats]
+
+
+# deterministic val chunks per file
+class ValChunksDataset(Dataset):
+    # creates fixed windows for each file (same every epoch)
+    def __init__(
+        self,
+        full_dataset: ADRESSSpectrogramDataset,
+        indices: List[int],
+        sample_rate: int = SAMPLE_RATE,
+        n_mels: int = N_MELS,
+        n_fft: int = N_FFT,
+        hop_length: int = HOP_LENGTH,
+        duration_sec: float = DURATION_SEC,
+        chunks_per_file: int = 4,
+    ):
+        self.full_dataset = full_dataset
+        self.sample_rate = sample_rate
+        self.num_samples = int(sample_rate * duration_sec)
+        self.chunks_per_file = chunks_per_file
+
+        self.mel = torchaudio.transforms.MelSpectrogram(
+            sample_rate=sample_rate,
+            n_fft=n_fft,
+            hop_length=hop_length,
+            n_mels=n_mels,
+            center=True,
+            power=2.0,
+        )
+
+        self.entries: List[Tuple[int, int]] = []
+
+        for ds_idx in indices:
+            path, _ = self.full_dataset.samples[ds_idx]
+            waveform, sr = torchaudio.load(path)
+            if waveform.size(0) > 1:
+                waveform = waveform.mean(dim=0, keepdim=True)
+            if sr != sample_rate:
+                waveform = torchaudio.transforms.Resample(sr, sample_rate)(waveform)
+
+            n = waveform.size(1)
+            if n <= self.num_samples:
+                self.entries.append((ds_idx, 0))
+                continue
+
+            max_start = n - self.num_samples
+            if chunks_per_file == 1:
+                start = max_start // 2
+                self.entries.append((ds_idx, start))
+            else:
+                for j in range(chunks_per_file):
+                    frac = j / (chunks_per_file - 1)
+                    start = int(round(frac * max_start))
+                    self.entries.append((ds_idx, start))
+
+    def __len__(self) -> int:
+        return len(self.entries)
+
+    def __getitem__(self, idx: int):
+        ds_idx, start = self.entries[idx]
+        path, label = self.full_dataset.samples[ds_idx]
+
+        waveform, sr = torchaudio.load(path)
+        if waveform.size(0) > 1:
+            waveform = waveform.mean(dim=0, keepdim=True)
+        if sr != self.sample_rate:
+            waveform = torchaudio.transforms.Resample(sr, self.sample_rate)(waveform)
+
+        n = waveform.size(1)
+        if n < self.num_samples:
+            pad = self.num_samples - n
+            waveform = torch.nn.functional.pad(waveform, (0, pad))
+        else:
+            start = min(start, n - self.num_samples)
+            waveform = waveform[:, start:start + self.num_samples]
+
+        spec = self.mel(waveform)
+        spec = torch.log(spec + 1e-9)
+        spec = (spec - spec.mean()) / (spec.std() + 1e-8)
+
+        return spec, torch.tensor(label, dtype=torch.float32)
+
+
+# model
 class AudioCNN(nn.Module):
-    """
-    2D CNN for spectrogram classification.
-    Input: (batch, 1, n_mels, time)
-    Output: logits for binary classification (batch,)
-    """
-
-    def __init__(self, n_mels: int = 64):
+    def __init__(self, n_mels: int = N_MELS):
         super().__init__()
 
         self.features = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=3, padding=1),
+            nn.Conv2d(1, 32, 3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=(2, 2)),  # 64 -> 32
+            nn.MaxPool2d(2),
 
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.Conv2d(32, 64, 3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=(2, 2)),  # 32 -> 16
+            nn.MaxPool2d(2),
 
-            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.Conv2d(64, 128, 3, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=(2, 2)),  # 16 -> 8
+            nn.MaxPool2d(2),
         )
 
         self.classifier = None
-        self._n_mels = n_mels
 
-    def _build_classifier_if_needed(self, x: torch.Tensor):
-        if self.classifier is None:
-            with torch.no_grad():
-                feats = self.features(x)
-                feats_flat_dim = feats.shape[1] * feats.shape[2] * feats.shape[3]
+    def _init_fc(self, x: torch.Tensor):
+        with torch.no_grad():
+            f = self.features(x)
+            d = f.shape[1] * f.shape[2] * f.shape[3]
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(d, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256, 1),
+        ).to(x.device)
 
-            self.classifier = nn.Sequential(
-                nn.Flatten(),
-                nn.Linear(feats_flat_dim, 256),
-                nn.ReLU(),
-                nn.Dropout(p=0.5),
-                nn.Linear(256, 1),
-            )
-            self.classifier.to(x.device)
-
-    # Forward pass
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        self._build_classifier_if_needed(x)
-        feats = self.features(x)
-        logits = self.classifier(feats)
-        return logits.view(-1)
+        if self.classifier is None:
+            self._init_fc(x)
+        f = self.features(x)
+        out = self.classifier(f)
+        return out.view(-1)
 
-# Training
+
 def train_one_epoch(
     model: nn.Module,
     loader: DataLoader,
@@ -203,7 +256,6 @@ def train_one_epoch(
     total = 0
 
     for specs, labels in loader:
-        # Augment on CPU before moving to GPU
         if spec_augment is not None:
             specs = spec_augment(specs)
 
@@ -254,44 +306,29 @@ def evaluate(
     epoch_acc = correct / total
     return epoch_loss, epoch_acc
 
-# Main
+
 def main():
     set_seed(42)
 
-    # Paths
-    train_chunks_root = Path("train") / "Normalised_audio-chunks"
-
-    # Hyperparameters
-    sample_rate = 16000
-    n_mels = 64
-    n_fft = 1024
-    hop_length = 512
-    duration_sec = 8.0
+    train_root = Path("train") / "Diarized_full_wave_enhanced_audio"
 
     batch_size = 32
     num_epochs = 200
     learning_rate = 1e-3
     val_split = 0.2
 
-    # Early stopping
+    train_repeats_per_file = 4
+    val_chunks_per_file = 4
+
     es_patience = 20
     min_delta = 1e-4
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    # Base dataset
-    full_dataset = ADRESSSpectrogramDataset(
-        root_dir=train_chunks_root,
-        sample_rate=sample_rate,
-        n_mels=n_mels,
-        n_fft=n_fft,
-        hop_length=hop_length,
-        duration_sec=duration_sec,
-    )
-    print(f"Total chunks in dataset: {len(full_dataset)}")
+    full_dataset = ADRESSSpectrogramDataset(train_root)
+    print(f"Total recordings in dataset: {len(full_dataset)}")
 
-    # Split by subject
     subject_ids = np.array(full_dataset.subject_ids)
     unique_subjects = np.unique(subject_ids)
 
@@ -304,10 +341,8 @@ def main():
     train_indices = [i for i, sid in enumerate(subject_ids) if sid not in val_subjects]
     val_indices = [i for i, sid in enumerate(subject_ids) if sid in val_subjects]
 
-    train_dataset = Subset(full_dataset, train_indices)
-    val_dataset = Subset(full_dataset, val_indices)
+    train_subset = Subset(full_dataset, train_indices)
 
-    # Ensure no subject overlap
     train_subjects = set(subject_ids[train_indices])
     val_subjects_actual = set(subject_ids[val_indices])
     overlap = train_subjects & val_subjects_actual
@@ -317,7 +352,21 @@ def main():
     if overlap:
         raise RuntimeError(f"Subject overlap between train and val: {overlap}")
 
-    print(f"Train chunks: {len(train_dataset)}, Val chunks: {len(val_dataset)}")
+    train_dataset = RepeatedDataset(
+        train_subset,
+        repeats_per_file=train_repeats_per_file,
+    )
+
+    val_dataset = ValChunksDataset(
+        full_dataset=full_dataset,
+        indices=val_indices,
+        chunks_per_file=val_chunks_per_file,
+    )
+
+    print(
+        f"Train windows per epoch: {len(train_dataset)}, "
+        f"Val windows: {len(val_dataset)}"
+    )
 
     num_workers = min(4, os.cpu_count() or 1)
 
@@ -336,14 +385,12 @@ def main():
         pin_memory=(device.type == "cuda"),
     )
 
-    # Augment train set
     spec_augment = nn.Sequential(
         torchaudio.transforms.FrequencyMasking(freq_mask_param=8),
         torchaudio.transforms.TimeMasking(time_mask_param=20),
     )
 
-    # Model, loss, optimizer, scheduler
-    model = AudioCNN(n_mels=n_mels).to(device)
+    model = AudioCNN(n_mels=N_MELS).to(device)
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -356,7 +403,6 @@ def main():
     best_val_loss = float("inf")
     best_val_acc = 0.0
     best_model_path = "best_adress_cnn.pt"
-
     epochs_no_improve = 0
 
     for epoch in range(1, num_epochs + 1):
@@ -375,34 +421,39 @@ def main():
 
         scheduler.step(val_loss)
 
-        # Check for improvement
-        if val_loss + min_delta < best_val_loss:
+        loss_improved = val_loss + min_delta < best_val_loss
+        acc_improved = val_acc > best_val_acc + 1e-6
+
+        if loss_improved:
             best_val_loss = val_loss
-            epochs_no_improve = 0
+        if acc_improved:
+            best_val_acc = val_acc
 
-            # Track best val acc and best loss
-            if val_acc > best_val_acc:
-                best_val_acc = val_acc
+        save_ckpt = False
+        if acc_improved:
+            save_ckpt = True
+        elif not acc_improved and abs(val_acc - best_val_acc) <= 1e-6 and loss_improved:
+            save_ckpt = True
 
+        if save_ckpt:
             torch.save(model.state_dict(), best_model_path)
             print(
                 f"New best model saved to {best_model_path} "
                 f"(val_loss={val_loss:.4f}, val_acc={val_acc:.4f})"
             )
+
+        if loss_improved or acc_improved:
+            epochs_no_improve = 0
         else:
             epochs_no_improve += 1
-            if epochs_no_improve > 15:
-                print(f"  -> No significant improvement for {epochs_no_improve} epoch(s). Stopping soon.")
+            if epochs_no_improve > es_patience:
+                print(
+                    f"Early stopping triggered after {epoch} epochs "
+                    f"(no improvement in val loss or acc for {es_patience} epochs)."
+                )
+                break
 
-        # Early stopping
-        if epochs_no_improve >= es_patience:
-            print(
-                f"Early stopping triggered after {epoch} epochs "
-                f"(no improvement in val loss for {es_patience} epochs)."
-            )
-            break
-
-    print(f"Training complete. Best val acc at lowest val loss: {best_val_acc:.4f}")
+    print(f"Training complete. Best val acc: {best_val_acc:.4f}")
 
 
 if __name__ == "__main__":
