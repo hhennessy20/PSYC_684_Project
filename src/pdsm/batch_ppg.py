@@ -100,7 +100,7 @@ def main():
     print(f"Using device: {device}")
     
     parent, folder = os.path.split(args.wav_dir_root)
-    output_dir_cd = os.path.join(args.output_dir, folder + "cd")
+    output_dir_cd = os.path.join(args.output_dir, folder + "/cd")
     if not os.path.isdir(output_dir_cd):
         raise FileNotFoundError(f"Output directory does not exist: {output_dir_cd}. Input directory must contain both 'cc' and 'cd' directories.")
     
@@ -111,7 +111,7 @@ def main():
         )
     
     
-    output_dir_cc = os.path.join(args.output_dir, folder + "cc")
+    output_dir_cc = os.path.join(args.output_dir, folder + "/cc")
     if not os.path.isdir(output_dir_cc):
         raise FileNotFoundError(f"Output directory does not exist: {output_dir_cc}. Input directory must contain both 'cc' and 'cd' directories.")
     
