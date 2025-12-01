@@ -96,7 +96,7 @@ def train_final_model(
             X_tr,
             y_tr,
             eval_set=[(X_val, y_val)],
-            early_stopping_rounds=20,
+            #early_stopping_rounds=20,
             verbose=False,
         )
         y_proba = model.predict_proba(X_val)[:, 1]

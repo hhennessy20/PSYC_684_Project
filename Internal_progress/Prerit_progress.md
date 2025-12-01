@@ -1,179 +1,180 @@
----
 
-# **Team README – Current Progress & How to Run the Pipeline**
+# 🧠 ADReSS Alzheimer’s Classification Pipeline – Internal Progress Report  
+## ✅ Overview
+This document summarizes the current working pipeline, major components implemented, and next steps for continuation.  
+The project now supports a full end-to-end Alzheimer’s classification system using:
 
-This document is for **internal team use**.
-It summarizes what is **already implemented**, what each script does, how to **run the pipeline**, and what still needs to be completed.
+- Transcript-based **speaker diarization** (pylangacq)
+- **Patient-only audio** generation
+- **openSMILE eGeMAPS** feature extraction (Python API)
+- **Feature aggregation** (utterance → recording)
+- **XGBoost baseline classifier**
 
----
-
-## ✅ **What’s Done So Far**
-
-### **1. Dataset Integration (ADReSS-IS 2020)**
-
-* Script automatically imports audio files from the ADReSS cc/cd folders.
-* Generates:
-
-  * `train_audio/` containing all WAVs
-  * `labels_train.csv` with IDs + labels (0=CC, 1=CD)
-
-**Script:** `src/data/prepare_adress_train.py`
-**Status:** ✔ Working
+The pipeline is now stable and reproducible.
 
 ---
 
-### **2. Audio Standardization (Pure Python)**
+# 📂 Current Project Structure (Relevant Folders)
 
-* Every WAV file is normalized to:
 
-  * 16 kHz
-  * Mono channel
-* Uses `soundfile` + `torchaudio`
-* No `ffmpeg` needed.
+```
 
+.  
+├── data/  
+│ ├── train_Data/ # Raw ADReSS dataset (CC/CD)  
+│ ├── train_audio/ # Prepared SXXX.wav copies  
+│ ├── patient_audio/ # Extracted PAR-only audio  
+│ ├── diarization/ # RTTM files  
+│ ├── features_raw/ # openSMILE CSVs  
+│ ├── features_agg/ # Final ML-ready features  
+│ ├── labels_train.csv # (ID, label) mapping  
+│  
+└── src/  
+├── diarization/  
+│ ├── diarize.py # New pylangacq diarizer  
+│ ├── audio_prep.py  
+│ └── role_heuristics.py  
+│  
+├── features/  
+│ ├── extract_egemaps.py # openSMILE extraction  
+│ └── aggregate_features.py  
+│  
+├── models/  
+│ ├── xgb_baseline.py # XGBoost pipeline  
+│  
+├── config.py # Global paths + settings
+
+```
+
+---
+
+# 🚀 Pipeline Status
+
+## 1️⃣ Data Preparation — **Complete**
+**Script:** `data/prepare_adress_train.py`
+
+What it does:
+- Copies ADReSS `cc/` and `cd/` WAV files → `data/train_audio/`
+- Generates `labels_train.csv`
+- Ensures consistent file IDs (`SXXX`)
+
+**Status:** Stable
+
+---
+
+## 2️⃣ Audio Standardization — **Complete**
 **Script:** `src/diarization/audio_prep.py`
-**Status:** ✔ Working
+
+What it does:
+- Converts WAVs to mono
+- Normalizes sample rate (16 kHz)
+- Ensures consistent amplitude range
+
+**Status:** Stable
 
 ---
 
-### **3. Speaker Diarization (pyannote.audio)**
-
-* Performs diarization on each full WAV recording.
-* Assigns patient role using “longest speaker” heuristic.
-* Extracts and concatenates **patient-only speech**.
-
-**Outputs:**
-
-* `patient_audio/ID_patient.wav`
-* `diarization/ID.rttm`
-
+## 3️⃣ Speaker Diarization (Transcript-Based) — **Complete**
 **Script:** `src/diarization/diarize.py`
-**Status:** ✔ Ongoing (Dependency Issues) 
+
+Key features:
+- Uses **pylangacq** to parse `.cha` files (handles multi-line utterances)
+- Extracts all segments with timestamps for each speaker
+- Produces:
+  - **RTTM** files (`data/diarization/SXXX.rttm`)
+  - **Patient-only audio** (`SXXX_patient.wav`)
+- Handles ms/seconds ambiguity
+- Eliminates timestamp inconsistencies
+
+**Status:** Fully working
 
 ---
 
-### **4. Acoustic Features (Python openSMILE)**
-
-* Extracts **eGeMAPSv02 Functionals** (1 vector per file).
-* No manual config files needed.
-
-**Outputs:**
-
-* `features_raw/ID_eGeMAPS.csv`
-
+## 4️⃣ Acoustic Feature Extraction (eGeMAPS) — **Complete**
 **Script:** `src/features/extract_egemaps.py`
-**Status:** ✔ Working
+
+What it does:
+- Uses Python **opensmile**
+- Extracts **88-dimensional eGeMAPSv02** features
+- Writes one CSV per patient audio file → `data/features_raw/`
+
+**Status:** Stable + validated
 
 ---
 
-### **5. Feature Aggregation + Scaling**
-
-* Stacks all extracted feature rows into:
-
-  * `X_train.npy`
-  * `y_train.npy`
-  * `ids_train.npy`
-* Fits a StandardScaler → saves:
-
-  * `scaler.joblib`
-  * `X_train_scaled.npy`
-
+## 5️⃣ Feature Aggregation — **Complete**
 **Script:** `src/features/aggregate_features.py`
-**Status:** ✔ Working
+
+What it does:
+- Reads raw feature CSVs
+- Aggregates time sequences → single feature vector per recording
+  - Mean
+  - Std Dev
+  - Percentiles (configurable)
+- Saves:
+  - `X.npy` — features  
+  - `y.npy` — labels  
+  - `scaler.pkl` — standardization scaler
+
+**Status:** Working
 
 ---
 
-### **6. Baseline AD Classifier (Technique 1)**
-
-* Uses XGBoost:
-
-  * Randomized hyperparameter search
-  * Stratified K-fold CV (5-fold)
-* Saves trained model:
-
-  * `xgb_model.joblib`
-
+## 6️⃣ XGBoost Baseline — **Complete**
 **Script:** `src/models/xgb_baseline.py`
-**Status:** ✔ Working
+
+Features:
+- Loads `X.npy` + `y.npy`
+- Train/val split
+- Standardization included
+- XGBoost with tuned hyperparameters
+- Computes:
+  - Accuracy  
+  - F1  
+  - ROC-AUC  
+- Saves model → `xgb_model.json`
+
+**Status:** Working and reproducible
 
 ---
 
-## 🚀 **How to Run the Pipeline (Team Commands)**
+# 🧩 Full Connected Pipeline
 
-From project root:
+The full working pipeline is:
+
+
+```
+
+prepare_adress_train.py  
+→ audio_prep.py  
+→ diarize.py  
+→ extract_egemaps.py  
+→ aggregate_features.py  
+→ xgb_baseline.py
+
+```
+
+Run in this order:
 
 ```bash
-source adclass/bin/activate   # activate venv
+# 1. Prepare ADReSS → train_audio + labels
+python data/prepare_adress_train.py
 
-python -m src.data.prepare_adress_train    # copy ADReSS audio + create labels
-python -m src.diarization.audio_prep       # standardize audio
-python -m src.diarization.diarize          # diarize + extract patient speech
-python -m src.features.extract_egemaps     # compute eGeMAPS (opensmile)
-python -m src.features.aggregate_features  # build X, y + scaler
-python -m src.models.xgb_baseline          # train XGBoost baseline
-```
+# 2. Normalize WAV files
+python -m src.diarization.audio_prep
 
-Once these steps run:
+# 3. Transcript-based diarization → RTTM + patient audio
+python -m src.diarization.diarize
 
-* Patient-only audio is ready
-* Features are ready
-* Model is trained
-* We can now test additional models (Technique 2)
+# 4. Extract eGeMAPS using opensmile
+python -m src.features.extract_egemaps
 
----
+# 5. Aggregate features into final matrix
+python -m src.features.aggregate_features
 
-## 📌 Important Directories (for the team)
+# 6. Train XGBoost model
+python -m src.models.xgb_baseline
 
 ```
-src/data/train_audio/          -> cc/cd wavs copied from dataset
-src/data/patient_audio/        -> diarized patient-only audio
-src/data/features_raw/         -> raw eGeMAPS CSVs (1 row/file)
-src/data/features_agg/         -> X, y, scaler, and trained model
-src/models/                    -> technique1 and placeholder for technique2
-```
 
----
-
-## 🔮 **Next Tasks (Team TODO)**
-
-### **Technique 2 (second classifier) — NEEDS IMPLEMENTATION**
-
-Possible options:
-
-* SVM on eGeMAPS
-* MLP classifier
-* CNN on log-mel spectrograms
-* PPG-based acoustic model
-* Acoustic + linguistic fusion
-
-### **Add evaluation metrics**
-
-* Confusion matrix
-* ROC-AUC curve
-* Balanced accuracy
-* Subject-wise predictions CSV
-
-### **Refactoring**
-
-* Add `run_pipeline.py` to automate all stages
-* Create helper functions for reuse
-
-### **Testing & Documentation**
-
-* Add tests for each module
-* Update README once Technique 2 is done
-
----
-
-## 👥 **Team Notes**
-
-* All scripts must be run from the **project root** using `python -m ...`
-* All imports use the `src` package:
-
-  ```python
-  from src import config
-  ```
-* Do **not** commit large WAV files — only scripts, configs, and models.
-
----
-
+The above pipeline is fully functional and validated end-to-end.

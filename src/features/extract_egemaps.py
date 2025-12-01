@@ -41,4 +41,4 @@ def process_patient_audio(patient_dir: Path, out_dir: Path) -> None:
 
 
 if __name__ == "__main__":
-    process_patient_audio(config.TRAIN_AUDIO_DIR, config.FEATURES_RAW_DIR)
+    process_patient_audio(config.PATIENT_AUDIO_DIR, config.FEATURES_RAW_DIR)
