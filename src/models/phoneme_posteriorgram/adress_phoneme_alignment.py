@@ -13,10 +13,12 @@ def clean_tokens(tokens):
 
 def process_filereader(corpus, out_dir_textgrid, removeInvestigator=True):
     os.makedirs(out_dir_textgrid, exist_ok=True)
-
+    
+    
     for subreader in corpus:
         cha_path = subreader.file_paths()[0]
         stem = os.path.splitext(os.path.basename(cha_path))[0]
+        speaker_id = stem[2:4]
 
         print(f"Processing {cha_path} → {stem}.TextGrid")
 
@@ -37,8 +39,8 @@ def process_filereader(corpus, out_dir_textgrid, removeInvestigator=True):
             start, end = utt.time_marks
 
             # Convert ms → seconds if needed
-            start = float(start) 
-            end   = float(end) 
+            start = float(start) /1000
+            end   = float(end) /1000
 
             if end <= start:
                 end = start + 0.001  # prevent zero-length intervals
@@ -47,11 +49,13 @@ def process_filereader(corpus, out_dir_textgrid, removeInvestigator=True):
             text = clean_tokens(utt.tokens)
             if not text:
                 continue
-
+            
             speaker = utt.participant  # "INV", "PAR", etc.
             
             if removeInvestigator and speaker=='INV': continue
 
+            
+            speaker += str(speaker_id)
             # Create tier if this speaker has not appeared yet
             if speaker not in tiers:
                 tiers[speaker] = IntervalTier(name=speaker)
@@ -76,7 +80,7 @@ def process_filereader(corpus, out_dir_textgrid, removeInvestigator=True):
         tg.maxTime = max((iv.maxTime for iv in all_intervals), default=0.0)
 
         # Save result
-        out_tg = os.path.join(out_dir_textgrid, f"{stem}.TextGrid")
+        out_tg = os.path.join(out_dir_textgrid, f"{stem}_patient.TextGrid")
         with open(out_tg, "w", encoding="utf-8") as f:
             tg.write(f)
 
@@ -93,8 +97,8 @@ if __name__ == "__main__":
     cha_dir = "src/data/train/transcription/cd"
     cha_dircc = "src/data/train/transcription/cc"
     
-    out_dir_textgrid = "src/data/train/Full_wave_enhanced_audio/cd/transcriptionsDiarized"
-    out_dir_textgridcc = "src/data/train/Full_wave_enhanced_audio/cc/transcriptionsDiarized"
+    out_dir_textgrid = "src/data/train/patient_audio_diarized/cd"
+    out_dir_textgridcc = "src/data/train/patient_audio_diarized/cc"
 
     corpus = pylangacq.read_chat(cha_dir)  # returns a FileReader object for the whole directory
     corpuscc = pylangacq.read_chat(cha_dircc)  # returns a FileReader object for the whole directory

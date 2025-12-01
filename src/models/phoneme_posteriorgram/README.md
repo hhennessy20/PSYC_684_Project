@@ -4,21 +4,17 @@ pip install -r ppg_requirements.txt
 
 For MFA installation: https://montreal-forced-aligner.readthedocs.io/en/latest/getting_started.html
 
-# Training PPG
+## MFA Usage
 
-## Prereqs
+https://montreal-forced-aligner.readthedocs.io/en/latest/first_steps/index.html#first-steps-align-pretrained
 
-ADReSS phoneme alignments from montreal forced aligner
-1. first run adress_phoneme_alignment.py to get input TextGrids compatible with MFA
-2. install mfa and run mfa align on command line using your input TextGrids
+1. Download models
+mfa model download acoustic english_us_arpa
+mfa model download dictionary english_us_arpa
 
-## Training
+2. Validate
+mfa validate src/data/train/patient_audio_diarized/cc english_us_arpa english_us_arpa
 
-fine_tune_ppg.ipynb
+3. Align (example)
 
-Follow these instructions: https://github.com/interactiveaudiolab/ppgs/tree/master#training
-
-1. Train baseline ppg using ppg\[train\] (module) and ffmpeg
-    a. Evaluate, store metrics
-2. Fine tune ppg using your phoneme alignments from step 1.
-    a. Evaluate, compare with baseline
+mfa align src/data/train/patient_audio_diarized/cc english_us_arpa english_us_arpa src/data/train/patient_audio_diarized/cc/MFA_output
