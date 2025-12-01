@@ -18,3 +18,4 @@ mfa validate src/data/train/patient_audio_diarized/cc english_us_arpa english_us
 3. Align (example)
 
 mfa align src/data/train/patient_audio_diarized/cc english_us_arpa english_us_arpa src/data/train/patient_audio_diarized/cc/MFA_output
+mfa align src/data/train/patient_audio_diarized/cd english_us_arpa english_us_arpa src/data/train/patient_audio_diarized/cd/MFA_output
