@@ -11,7 +11,7 @@ def clean_tokens(tokens):
     return " ".join(cleaned).strip()
 
 
-def process_filereader(corpus, out_dir_textgrid, wav_dir):
+def process_filereader(corpus, out_dir_textgrid, removeInvestigator=True):
     os.makedirs(out_dir_textgrid, exist_ok=True)
 
     for subreader in corpus:
@@ -49,6 +49,8 @@ def process_filereader(corpus, out_dir_textgrid, wav_dir):
                 continue
 
             speaker = utt.participant  # "INV", "PAR", etc.
+            
+            if removeInvestigator and speaker=='INV': continue
 
             # Create tier if this speaker has not appeared yet
             if speaker not in tiers:
@@ -89,9 +91,13 @@ if __name__ == "__main__":
     #
 
     cha_dir = "src/data/train/transcription/cd"
-    wav_dir = "src/data/train/Full_wave_enhanced_audio/cd"
-    out_dir_textgrid = "src/data/train/Full_wave_enhanced_audio/cd"
+    cha_dircc = "src/data/train/transcription/cc"
+    
+    out_dir_textgrid = "src/data/train/Full_wave_enhanced_audio/cd/transcriptionsDiarized"
+    out_dir_textgridcc = "src/data/train/Full_wave_enhanced_audio/cc/transcriptionsDiarized"
 
     corpus = pylangacq.read_chat(cha_dir)  # returns a FileReader object for the whole directory
+    corpuscc = pylangacq.read_chat(cha_dircc)  # returns a FileReader object for the whole directory
     
-    process_filereader(corpus, out_dir_textgrid, wav_dir)
+    process_filereader(corpus, out_dir_textgrid)
+    process_filereader(corpuscc, out_dir_textgridcc)
