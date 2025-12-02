@@ -61,6 +61,8 @@ def infer_ppg_from_wav(wav_path, gpu_idx=None, savePlot=False):
     
     # infer ppg from non padded audio
     pp = ppgs.from_audio(audio, ppgs.SAMPLE_RATE, gpu=gpu_idx)
+    
+    return pp
 
 
 def save_ppg(ppg, wav_path,out_dir, savePlot=False):
