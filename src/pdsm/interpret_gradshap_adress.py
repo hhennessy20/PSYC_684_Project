@@ -4,12 +4,18 @@ from pathlib import Path
 import argparse
 from typing import List, Dict, Tuple
 
+# Fixes torchcodec and ffmpeg issues
+ffmpeg_dll_dir = Path(r"C:/Users/jackm/miniconda3/Library/bin")  # adjust if your conda root differs
+assert ffmpeg_dll_dir.exists(), ffmpeg_dll_dir
+os.add_dll_directory(str(ffmpeg_dll_dir))
+
 import numpy as np
 import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from captum.attr import GradientShap
 import torchaudio
+
 
 from train_adress_cnn import (
     AudioCNN,
