@@ -47,7 +47,7 @@ def generate_ppgs(wav_dir,  output_dir, gpu_idx=None, savePlot=False):
                 
                 ppg = infer_ppg_from_wav(wav_path)
                 
-                save_ppg(ppg, wav_path, output_dir)
+                save_ppg(ppg.squeeze(0), wav_path, output_dir)
                 
 
                 
@@ -90,7 +90,7 @@ def main():
     )
     parser.add_argument(
         "--output_dir",
-        default="ppgs",
+        default="src/pdsm/ppgs",
         help="Directory to save PPG plots.",
     )
     args = parser.parse_args()

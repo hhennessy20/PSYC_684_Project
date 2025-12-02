@@ -4,3 +4,4 @@ ppgs/*
 best_adress_cnn.pt
 train/Diarized_full_wave_enhanced_audio/*
 saliencies/*
+pdsm_out/*
