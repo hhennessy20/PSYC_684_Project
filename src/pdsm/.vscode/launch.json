@@ -1,0 +1,44 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "PPGS",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--wav_dir_root", "src/data/train/diarized_patient_audio"
+            ]
+        }
+        ,{
+            "name": "Generate Saliency",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--train_root", "src/pdsm/train/Diarized_full_wave_enhanced_audio"
+                ,"--model_ckpt", "src/pdsm/best_adress_cnn.pt"
+            ]
+        }
+        ,{
+            "name": "PDSM",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--M_path", "src/pdsm/saliencies/S084_M.pt"
+                ,"--X_p_path", "src/pdsm/ppgs/diarized_patient_audio/cd/PPG_S084_patient.pt"
+                ,"--Spec_path", "src/pdsm/saliencies/S084_spec.pt"
+                ,"--crop_fraction", "0.1"
+                ,"--k", "20"
+                ,"--include_input_visual"
+            ]
+        }
+    ]
+}

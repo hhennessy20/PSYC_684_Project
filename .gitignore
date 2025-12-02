@@ -7,4 +7,5 @@ data/*
 /adclass
 req.txt
 __pycache__/
-.vscode/
+/.vscode/
+!/src/pdsm/.vscode
