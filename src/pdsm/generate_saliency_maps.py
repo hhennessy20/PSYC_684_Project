@@ -29,6 +29,11 @@ def main():
         help="Root directory for diarized full-wave audio.",
     )
     parser.add_argument(
+        "--saliency_save_dir",
+        default="saliencies",
+        help="Output dir",
+    )
+    parser.add_argument(
         "--model_ckpt",
         default="best_adress_cnn.pt",
         help="Path to trained AudioCNN checkpoint.",
@@ -75,8 +80,8 @@ def main():
     #     "subject": sid,
     # }
     
-    saliency_save_dir = "saliencies"
-    os.makedirs(saliency_save_dir, exist_ok=True)
+    
+    os.makedirs(args.saliency_save_dir, exist_ok=True)
 
     for i, item in enumerate(results):
         M_tensor = torch.tensor(item["M"])
@@ -86,8 +91,8 @@ def main():
         subject = item["subject"]
         base_name = f"{subject}"
         
-        M_path = os.path.join(saliency_save_dir, f"{base_name}_M.pt")
-        spec_path = os.path.join(saliency_save_dir, f"{base_name}_spec.pt")
+        M_path = os.path.join(args.saliency_save_dir, f"{base_name}_M.pt")
+        spec_path = os.path.join(args.saliency_save_dir, f"{base_name}_spec.pt")
 
         torch.save(M_tensor, M_path)
         torch.save(spec_tensor, spec_path)

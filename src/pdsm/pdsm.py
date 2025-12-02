@@ -79,10 +79,7 @@ def plot_pdsm(M, Mc, spec, selected_phonemes, out_file_path, includeInputVisuals
       Figure saved to out_file_path
     """
 
-    
     F, T = spec.shape
-    
-        
     
     frame_hop = HOP_LENGTH / SAMPLE_RATE
     times = np.arange(T) * frame_hop  # in seconds
