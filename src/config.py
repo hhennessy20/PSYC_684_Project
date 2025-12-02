@@ -49,6 +49,10 @@ WORD_EGEMAPS_CSV.parent.mkdir(parents=True, exist_ok=True)
 PHONEME_EGEMAPS_CSV = DATA_DIR / "features" / "phoneme_egemaps_diarized.csv"
 PHONEME_EGEMAPS_CSV.parent.mkdir(parents=True, exist_ok=True)
 
+
+FIG_DIR = PROJECT_ROOT / "data" / "figures"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
+
 # -----------------------------
 # Audio / training settings
 # -----------------------------
