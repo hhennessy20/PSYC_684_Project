@@ -93,31 +93,33 @@ def main():
     )
     args = parser.parse_args()
     
-    os.makedirs( args.output_dir, exist_ok=True)
+    parent, folder = os.path.split(args.wav_dir_root)
+    wav_dir_cd = os.path.join(args.wav_dir_root, "cd")
+    wav_dir_cc = os.path.join(args.wav_dir_root, "cc")
+    if not os.path.isdir(wav_dir_cd) or not os.path.isdir(wav_dir_cc):
+        raise FileNotFoundError(f"Input directory must contain both 'cc' and 'cd' directories.")
+    
+    
     
     # CUDA check
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
-    parent, folder = os.path.split(args.wav_dir_root)
-    output_dir_cd = os.path.join(args.output_dir, folder + "/cd")
-    if not os.path.isdir(output_dir_cd):
-        raise FileNotFoundError(f"Output directory does not exist: {output_dir_cd}. Input directory must contain both 'cc' and 'cd' directories.")
     
+    output_dir_cd = os.path.join(args.output_dir, folder + "/cd")
+    os.makedirs( output_dir_cd, exist_ok=True)
     # PPGS for AD postive
     generate_ppgs(
-        os.path.join(args.wav_dir_root, "cd"),
+        wav_dir_cd,
         output_dir_cd
         )
     
     
     output_dir_cc = os.path.join(args.output_dir, folder + "/cc")
-    if not os.path.isdir(output_dir_cc):
-        raise FileNotFoundError(f"Output directory does not exist: {output_dir_cc}. Input directory must contain both 'cc' and 'cd' directories.")
-    
+    os.makedirs( output_dir_cc, exist_ok=True)
     # PPGS for AD negative (control)
     generate_ppgs(
-        os.path.join(args.wav_dir_root, "cc"),
+        wav_dir_cc,
         output_dir_cc
         )
     
