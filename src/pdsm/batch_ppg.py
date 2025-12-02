@@ -41,19 +41,20 @@ def generate_ppgs(wav_dir,  output_dir, gpu_idx=None, savePlot=False):
     os.makedirs(output_dir, exist_ok=True)
     
     for root, dirs, files in os.walk(wav_dir):
+        files = [f for f in files if f.lower().endswith(".wav")]
         for file in tqdm(files, desc="Processing WAVs"):
-            if file.lower().endswith(".wav"):
-                wav_path = os.path.join(root, file)
-                
-                ppg = infer_ppg_from_wav(wav_path)
-                
-                save_ppg(ppg.squeeze(0), wav_path, output_dir)
-                
-
-                
+            
+            wav_path = os.path.join(root, file)
+            
+            ppg = infer_ppg_from_wav(wav_path, gpu_idx)
+            
+            save_ppg(ppg.squeeze(0), wav_path, output_dir, savePlot)
                 
 
-def infer_ppg_from_wav(wav_path, gpu_idx=None, savePlot=False):
+                
+                
+
+def infer_ppg_from_wav(wav_path, gpu_idx=None):
     base = os.path.splitext(os.path.basename(wav_path))[0]
     tqdm.write(f"Processing {base}")
     # load audio using torchcodec
