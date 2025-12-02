@@ -109,16 +109,6 @@ def plot_pdsm(M, Mc, spec, selected_phonemes, out_file_path, includeInputVisuals
         axs = [axs]
         overlay_axis = 0
         
-    
-
-    plt.tight_layout()
-    plt.savefig(out_file_path, dpi=200)
-    plt.close()
-    
-    
-def build_figure(spec, times, Mc, axes, selected_phonemes, overlay_axis, frame_hop, start_frame=None, ):
-    axs = axes
-    F = spec.shape[0]
     # Background spectrogram
     axs[overlay_axis].imshow(spec, aspect='auto',
                extent=[times[0], times[-1], 0, F],
@@ -154,8 +144,12 @@ def build_figure(spec, times, Mc, axes, selected_phonemes, overlay_axis, frame_h
     axs[overlay_axis].set_title("Spectrogram with Phoneme-Discretized Saliency Overlay")
     axs[overlay_axis].set_xlabel("Time (seconds)")
     axs[overlay_axis].set_ylabel("Mel Bins")
+
+    plt.tight_layout()
+    plt.savefig(out_file_path, dpi=200)
+    plt.close()
     
-    return axs
+    
     
 
 def phoneme_discretization(M, X_p, k=0):
