@@ -21,46 +21,6 @@ from train_adress_cnn import (
 )
 
 
-def preprocess(M):
-    """
-    User-defined preprocessing of saliency map M
-    M: Tensor [F, T]
-    Return: Mf: Tensor [F, T]
-    """
-    # TODO: implement preprocessing methods THRESHOLDING and ABS
-    return M
-
-def pool(M_segment):
-    """
-    User-defined pooling operator for energy calculation.
-    M_segment: Tensor [F, duration]
-    Return: scalar energy value
-    """
-    # TEST MEAN POOLING
-    # sum pooling
-    return torch.sum(M_segment).item()
-
-def get_phoneme_boundaries(X_ep):
-    """
-    Determine phoneme boundaries from argmax phoneme sequence X_ep.
-    Input:
-        X_ep: [T] sequence of phoneme indices per frame
-    Output:
-        List of tuples (phoneme_label, start_idx, end_idx)
-    """
-    boundaries = []
-    prev_label = int(X_ep[0])
-    start = 0
-
-    for t in range(1, len(X_ep)):
-        if X_ep[t] != prev_label:
-            boundaries.append((prev_label, start, t))
-            prev_label = int(X_ep[t])
-            start = t
-
-    boundaries.append((prev_label, start, len(X_ep)))  # final segment
-    return boundaries
-
 def plot_pdsm(M, Mc, spec, selected_phonemes, out_file_path, includeInputVisuals=False, start_frame=None,end_frame=None):
     
     """
@@ -152,6 +112,50 @@ def plot_pdsm(M, Mc, spec, selected_phonemes, out_file_path, includeInputVisuals
     
     
 
+def preprocess(M):
+    """
+    User-defined preprocessing of saliency map M
+    M: Tensor [F, T]
+    Return: Mf: Tensor [F, T]
+    """
+    # TODO: implement preprocessing methods THRESHOLDING and ABS
+    
+    # threshold
+    return M.clamp(min=0)
+    # return M
+
+def pool(M_segment):
+    """
+    User-defined pooling operator for energy calculation.
+    M_segment: Tensor [F, duration]
+    Return: scalar energy value
+    """
+    # TEST MEAN POOLING
+    # sum pooling
+    return torch.sum(M_segment).item()
+
+def get_phoneme_boundaries(X_ep):
+    """
+    Determine phoneme boundaries from argmax phoneme sequence X_ep.
+    Input:
+        X_ep: [T] sequence of phoneme indices per frame
+    Output:
+        List of tuples (phoneme_label, start_idx, end_idx)
+    """
+    boundaries = []
+    prev_label = int(X_ep[0])
+    start = 0
+
+    for t in range(1, len(X_ep)):
+        if X_ep[t] != prev_label:
+            boundaries.append((prev_label, start, t))
+            prev_label = int(X_ep[t])
+            start = t
+
+    boundaries.append((prev_label, start, len(X_ep)))  # final segment
+    return boundaries
+
+
 def phoneme_discretization(M, X_p, k=0):
     """
     Core algorithm.
@@ -166,8 +170,8 @@ def phoneme_discretization(M, X_p, k=0):
 
     # Step 1: preprocess
     print("Preprocessing")
-    # Mf = preprocess(M)
-    Mf = M
+    Mf = preprocess(M)
+    # Mf = M
 
     # Step 2: time-to-phoneme alignment
     print("Aligning phonemes and collecting boundaries")
@@ -205,6 +209,7 @@ def phoneme_discretization(M, X_p, k=0):
     selected_phonemes.sort(key=lambda x: x["start"])
 
     return Mc, selected_phonemes
+
 
 def crop_tensors(spec, M, X_p, crop_fraction):
     F, T = spec.shape
