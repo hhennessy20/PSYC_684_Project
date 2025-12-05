@@ -16,7 +16,7 @@ os.add_dll_directory(str(ffmpeg_dll_dir))
 
 import torch
 
-from pdsm import preprocess, pool, phoneme_discretization
+from pdsm import phoneme_discretization
 
 
 def plot_phoneme_hist(selected_phonemes, tot_samples, out_file, k):
@@ -40,22 +40,9 @@ def plot_phoneme_hist(selected_phonemes, tot_samples, out_file, k):
     plt.xticks(rotation=90)
     plt.tight_layout()
     plt.savefig(out_file)
-    
-    
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--M_path", type=str, required=True, help="Path to saliency maps")
-    parser.add_argument("--X_p_path", type=str, required=True, help="Path to PPG .pt files")
-    parser.add_argument("--k", type=int, default=0, help="Number of phonemes to keep. Defaults to 1/4 of total")
-    parser.add_argument("--save_dir", type=str, default="src/pdsm/pdsm_out", help="Where to save output")
-    parser.add_argument("--save_pt",  action="store_true")
-    args = parser.parse_args()
-    
-    os.makedirs(args.save_dir, exist_ok=True)
-    
-    saliency_map_paths = sorted(Path(args.M_path).glob("*_M.pt"))
-    ppg_paths = sorted(Path(args.X_p_path).glob("*.pt"))
+
+def run_batch(saliency_map_paths, ppg_paths, top_k, output_dir, preprocess_mode, pool_mode, save_pt=False):
     
     all_phonemes = []
     processed_ctr = 0
@@ -74,7 +61,7 @@ def main():
         X_p = torch.load(ppg_path)    # expected shape [N, T]
         
         # Run algorithm
-        Mc, selected_phonemes = phoneme_discretization(M, X_p, args.k)
+        Mc, selected_phonemes = phoneme_discretization(M, X_p, top_k)
         
         all_phonemes.extend(selected_phonemes)
         
@@ -85,13 +72,31 @@ def main():
         base = os.path.splitext(os.path.basename(M_path))[0]
         print(f"{base} Done")
         
-        if args.save_pt:
+        if save_pt:
             
-            out_file = os.path.join(args.save_dir, f"{base[:4]}.pt")
+            out_file = os.path.join(output_dir, f"{base[:4]}.pt")
             torch.save(Mc, out_file)
-            print(f"Saved phoneme discretized saliency map to {out_file}")
+            print(f"Saved binarized phoneme discretized saliency map to {out_file}")
     
-    plot_phoneme_hist(all_phonemes,processed_ctr, os.path.join(args.save_dir, f"cc_phoneme_hist_nosilence_k{args.k}.png"), args.k)
+    # change cc <-> cd depending on input
+    plot_phoneme_hist(all_phonemes,processed_ctr, os.path.join(output_dir, f"cc_phoneme_hist_nosilence_k{top_k}.png"), top_k)
+    
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--M_path", type=str, required=True, help="Path to saliency maps")
+    parser.add_argument("--X_p_path", type=str, required=True, help="Path to PPG .pt files")
+    parser.add_argument("--k", type=int, default=0, help="Number of phonemes to keep. Defaults to 1/4 of total")
+    parser.add_argument("--save_dir", type=str, default="src/pdsm/pdsm_out", help="Where to save output")
+    parser.add_argument("--save_pt",  action="store_true")
+    args = parser.parse_args()
+    
+    os.makedirs(args.save_dir, exist_ok=True)
+    
+    saliency_map_paths = sorted(Path(args.M_path).glob("*_M.pt"))
+    ppg_paths = sorted(Path(args.X_p_path).glob("*.pt"))
+    
+    run_batch(saliency_map_paths, ppg_paths, args.k, args.save_dir, "threshold", "sum", args.save_pt)
     
 
 if __name__ == "__main__":

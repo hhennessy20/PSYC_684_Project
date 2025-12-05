@@ -1,6 +1,6 @@
 import argparse
 import os
-import math
+from enum import Enum
 from pathlib import Path
 from ppgs import PHONEME_TO_INDEX_MAPPING, PHONEMES
 
@@ -112,27 +112,37 @@ def plot_pdsm(M, Mc, spec, selected_phonemes, out_file_path, includeInputVisuals
     
     
 
-def preprocess(M):
+def preprocess(M, mode="threshold"):
     """
-    User-defined preprocessing of saliency map M
+    User-defined Preprocessing of saliency map M
     M: Tensor [F, T]
     Return: Mf: Tensor [F, T]
     """
-    # TODO: implement preprocessing methods THRESHOLDING and ABS
-    
     # threshold
-    return M.clamp(min=0)
-    # return M
+    if mode == "threshold":
+        return M.clamp(min=0)
+    elif mode == "absolute":
+        return torch.abs(M)
+    else:
+        raise ValueError("Invalid mode. Supported modes: 'threshold', 'absolute'.")
+    
 
-def pool(M_segment):
+def pool(M_segment, mode="sum"):
     """
-    User-defined pooling operator for energy calculation.
-    M_segment: Tensor [F, duration]
+    Pooling operator for energy calculation. 
+    Parameters: 
+    - M_segment: Tensor [F, duration]
+    - type: [sum, mean]
     Return: scalar energy value
     """
-    # TEST MEAN POOLING
-    # sum pooling
-    return torch.sum(M_segment).item()
+    
+    if mode == "sum":
+        return torch.sum(M_segment).item()
+    elif mode == "mean":
+        return torch.mean(M_segment).item()
+    else:
+        raise ValueError("Invalid value for [type] parameter. Must be 'sum' or 'mean'.")
+    
 
 def get_phoneme_boundaries(X_ep):
     """
@@ -166,7 +176,6 @@ def phoneme_discretization(M, X_p, k=0):
     Output:
         Mc: phoneme discretized saliency map [F, T]
     """
-    F, T = M.shape
 
     # Step 1: preprocess
     print("Preprocessing")
@@ -184,7 +193,7 @@ def phoneme_discretization(M, X_p, k=0):
     if k==0:
         k = len(boundaries) // 4
     print(f"Pooling energy per phoneme segment. Keeping {k} highest energy phonemes")
-    energies = [pool(Mf[:, s:e]) for (_, s, e) in boundaries]
+    energies = np.array([pool(Mf[:, s:e]) for (_, s, e) in boundaries])
 
     # Step 5: select top-k phonemes by energy
     top_k_indices = np.argsort(energies)[-k:]
