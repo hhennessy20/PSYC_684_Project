@@ -1,8 +1,6 @@
 # Faithfulness metric from Gupta et al. "Phoneme Discretized Saliency Maps"
-# FF_n = f(X_n)_c - f(X_n ⊙ (1-M))_c
-#
-# Compares faithfulness of GradSHAP saliency maps vs PDSM saliency maps
-# Can auto-generate all components if not provided using existing project scripts.
+# FF = f(X)_c - f(X * (1-M))_c
+# Compares faithfulness of GradSHAP vs PDSM saliency maps
 
 import os
 import sys
@@ -184,15 +182,8 @@ def compute_faithfulness(model, spec, saliency_map, window_frames, device=DEVICE
     return ff, p_original, p_masked
 
 
-# =============================================================================
-# Generation Functions - Using Existing Project Scripts
-# =============================================================================
-
 def generate_saliency_maps(output_dir, model_ckpt=None, device=DEVICE):
-    """
-    Generate spectrograms and GradSHAP saliency maps.
-    Uses: interpret_gradshap_adress.py::get_saliency_maps_for_pdsm()
-    """
+    """Generate spectrograms and GradSHAP saliency maps."""
     from interpret_gradshap_adress import get_saliency_maps_for_pdsm
     
     output_dir = Path(output_dir)
@@ -200,11 +191,8 @@ def generate_saliency_maps(output_dir, model_ckpt=None, device=DEVICE):
     
     model_ckpt = model_ckpt or MODEL_CKPT_PATH
     
-    print(f"\n{'='*60}")
-    print("GENERATING SALIENCY MAPS (GradSHAP)")
-    print(f"{'='*60}")
-    print(f"  Using: interpret_gradshap_adress.py")
-    print(f"  Audio source: {ADRESS_DIARIZED_DIR}")
+    print(f"\nGenerating saliency maps (GradSHAP)")
+    print(f"  Audio: {ADRESS_DIARIZED_DIR}")
     print(f"  Model: {model_ckpt}")
     print(f"  Output: {output_dir}")
     
@@ -241,26 +229,18 @@ def generate_saliency_maps(output_dir, model_ckpt=None, device=DEVICE):
 
 
 def generate_ppgs_for_subjects(subject_ids, output_dir, device=DEVICE):
-    """
-    Generate PPGs (Phoneme Posteriorgrams) for specified subjects.
-    Uses: batch_ppg.py::infer_ppg_from_wav(), save_ppg()
-    
-    NOTE: Requires 'ppgs' library to be installed: pip install ppgs
-    """
+    """Generate PPGs for specified subjects. Requires 'ppgs' library."""
     try:
         from batch_ppg import infer_ppg_from_wav, save_ppg
     except ImportError as e:
         print(f"ERROR: Could not import from batch_ppg.py: {e}")
-        print("Make sure 'ppgs' library is installed: pip install ppgs")
+        print("Install ppgs library: pip install ppgs")
         return []
     
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    print(f"\n{'='*60}")
-    print("GENERATING PHONEME POSTERIORGRAMS (PPGs)")
-    print(f"{'='*60}")
-    print(f"  Using: batch_ppg.py")
+    print(f"\nGenerating PPGs")
     print(f"  Output: {output_dir}")
     
     gpu_idx = 0 if device.type == "cuda" else None
@@ -307,17 +287,12 @@ def generate_ppgs_for_subjects(subject_ids, output_dir, device=DEVICE):
 
 
 def generate_pdsms(subject_ids, saliency_dir, ppg_dir, output_dir, top_k=0):
-    """
-    Generate PDSMs (Phoneme Discretized Saliency Maps) for specified subjects.
-    Uses: pdsm.py::phoneme_discretization()
-    
-    NOTE: Requires 'ppgs' library to be installed: pip install ppgs
-    """
+    """Generate PDSMs for specified subjects. Requires 'ppgs' library."""
     try:
         from pdsm import phoneme_discretization
     except ImportError as e:
         print(f"ERROR: Could not import from pdsm.py: {e}")
-        print("Make sure 'ppgs' library is installed: pip install ppgs")
+        print("Install ppgs library: pip install ppgs")
         return []
     
     output_dir = Path(output_dir)
@@ -325,14 +300,11 @@ def generate_pdsms(subject_ids, saliency_dir, ppg_dir, output_dir, top_k=0):
     saliency_dir = Path(saliency_dir)
     ppg_dir = Path(ppg_dir)
     
-    print(f"\n{'='*60}")
-    print("GENERATING PHONEME DISCRETIZED SALIENCY MAPS (PDSMs)")
-    print(f"{'='*60}")
-    print(f"  Using: pdsm.py::phoneme_discretization()")
+    print(f"\nGenerating PDSMs")
     print(f"  Saliency maps: {saliency_dir}")
     print(f"  PPGs: {ppg_dir}")
     print(f"  Output: {output_dir}")
-    print(f"  Top-k phonemes: {top_k if top_k > 0 else 'auto (1/4 of boundaries)'}")
+    print(f"  Top-k: {top_k if top_k > 0 else 'auto'}")
     
     generated = []
     
@@ -382,10 +354,6 @@ def generate_pdsms(subject_ids, saliency_dir, ppg_dir, output_dir, top_k=0):
     print(f"Generated PDSMs for {len(generated)} subjects\n")
     return generated
 
-
-# =============================================================================
-# Faithfulness Computation
-# =============================================================================
 
 def compute_faithfulness_for_subject(
     subject_id,
@@ -448,18 +416,18 @@ def compute_faithfulness_for_subject(
 
 def print_results(all_results, include_pdsm=True):
     """Print formatted faithfulness results."""
-    print("\n" + "=" * 70)
+    print("\n" + "-" * 60)
     if include_pdsm:
-        print("FAITHFULNESS COMPARISON: GradSHAP vs PDSM")
+        print("Faithfulness: GradSHAP vs PDSM")
     else:
-        print("FAITHFULNESS: GradSHAP")
-    print("=" * 70)
+        print("Faithfulness: GradSHAP")
+    print("-" * 60)
     
     if include_pdsm:
-        print(f"{'Subject':<10} {'GradSHAP FF':>12} {'PDSM FF':>12} {'Δ (PDSM-GS)':>12}")
+        print(f"{'Subject':<10} {'GradSHAP':>12} {'PDSM':>12} {'Diff':>12}")
     else:
-        print(f"{'Subject':<10} {'GradSHAP FF':>12} {'P(AD) orig':>12} {'P(AD) masked':>12}")
-    print("-" * 70)
+        print(f"{'Subject':<10} {'GradSHAP':>12} {'P(AD) orig':>12} {'P(AD) mask':>12}")
+    print("-" * 60)
     
     gs_scores = []
     pdsm_scores = []
@@ -494,7 +462,7 @@ def print_results(all_results, include_pdsm=True):
             else:
                 print(f"{sid:<10} {'N/A':>12} {'N/A':>12} {'N/A':>12}")
     
-    print("-" * 70)
+    print("-" * 60)
     
     if gs_scores:
         gs_mean = np.mean(gs_scores)
@@ -502,19 +470,14 @@ def print_results(all_results, include_pdsm=True):
         
         if include_pdsm and pdsm_scores:
             pdsm_mean = np.mean(pdsm_scores)
-            delta_mean = pdsm_mean - gs_mean
-            print(f" {pdsm_mean:>12.4f} {delta_mean:>+12.4f}")
+            diff_mean = pdsm_mean - gs_mean
+            print(f" {pdsm_mean:>12.4f} {diff_mean:>+12.4f}")
             print(f"{'STD':<10} {np.std(gs_scores):>12.4f} {np.std(pdsm_scores):>12.4f}")
         else:
             print()
             print(f"{'STD':<10} {np.std(gs_scores):>12.4f}")
     
-    print("=" * 70)
-    print("\nInterpretation:")
-    print("  - Higher faithfulness = removing salient regions hurts prediction more")
-    if include_pdsm:
-        print("  - Positive Δ means PDSM is more faithful than GradSHAP")
-        print("  - Negative Δ means GradSHAP is more faithful than PDSM")
+    print("-" * 60)
 
 
 def main():
@@ -614,10 +577,8 @@ def main():
     model, window_frames = load_model(model_path, DEVICE)
     print(f"  Using window size: {window_frames} frames")
     
-    # Step 4: Compute faithfulness for each subject
-    print(f"\n{'='*60}")
-    print("COMPUTING FAITHFULNESS")
-    print(f"{'='*60}")
+    # Compute faithfulness for each subject
+    print(f"\nComputing faithfulness...")
     
     all_results = []
     for sid in subject_ids:

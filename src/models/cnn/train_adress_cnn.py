@@ -12,12 +12,11 @@ import soundfile as sf
 from torch import nn
 from torch.utils.data import Dataset, DataLoader, Subset
 
-# Add src directory to path for config import
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config import ADRESS_DIARIZED_DIR, RANDOM_SEED, MODEL_CKPT_PATH, MODELS_DIR
 
 
-# Seed
+
 def set_seed(seed: int = 42):
     random.seed(seed)
     np.random.seed(seed)

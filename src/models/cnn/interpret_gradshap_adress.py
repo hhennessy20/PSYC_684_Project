@@ -13,7 +13,6 @@ from captum.attr import GradientShap
 import torchaudio
 import soundfile as sf
 
-# Add src directory to path for config import
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from config import ADRESS_DIARIZED_DIR, RANDOM_SEED, MODEL_CKPT_PATH
 
@@ -317,7 +316,7 @@ def _enumerate_full_recordings(root: Path,) -> Tuple[List[Path], List[int], List
 
     return paths, labels, sids
 
-#Returns a list of dicts for the top-K least/most AD-confident validation recordings.
+# Returns saliency maps for the top-K least/most AD-confident validation recordings.
 def get_saliency_maps_for_pdsm(
     train_root: str | Path = None,
     model_ckpt: str | Path = None,
