@@ -4,12 +4,6 @@
 from pathlib import Path
 import os, sys
 
-# Fixes torchcodec and ffmpeg issues
-ffmpeg_dll_dir = Path(r"C:/Users/jackm/miniconda3/Library/bin")  # adjust if your conda root differs
-assert ffmpeg_dll_dir.exists(), ffmpeg_dll_dir
-os.add_dll_directory(str(ffmpeg_dll_dir))
-
-import os
 import torch
 import torchcodec
 import ppgs

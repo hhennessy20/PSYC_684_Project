@@ -1,14 +1,20 @@
 # Harry Hennessy
 import os
 import random
+import sys
 from pathlib import Path
 from typing import List, Tuple
 
 import numpy as np
 import torch
 import torchaudio
+import soundfile as sf
 from torch import nn
 from torch.utils.data import Dataset, DataLoader, Subset
+
+# Add src directory to path for config import
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from config import ADRESS_DIARIZED_DIR, RANDOM_SEED, MODEL_CKPT_PATH, MODELS_DIR
 
 
 # Seed
@@ -79,7 +85,11 @@ class ADRESSSpectrogramDataset(Dataset):
 
     # random crop loader
     def _load_audio_random(self, path: Path) -> torch.Tensor:
-        waveform, sr = torchaudio.load(path)
+        audio_np, sr = sf.read(str(path), dtype='float32')
+        if audio_np.ndim == 1:
+            waveform = torch.from_numpy(audio_np).unsqueeze(0)
+        else:
+            waveform = torch.from_numpy(audio_np.T)
         if waveform.size(0) > 1:
             waveform = waveform.mean(dim=0, keepdim=True)
         if sr != self.sample_rate:
@@ -149,7 +159,11 @@ class ValChunksDataset(Dataset):
 
         for ds_idx in indices:
             path, _ = self.full_dataset.samples[ds_idx]
-            waveform, sr = torchaudio.load(path)
+            audio_np, sr = sf.read(str(path), dtype='float32')
+            if audio_np.ndim == 1:
+                waveform = torch.from_numpy(audio_np).unsqueeze(0)
+            else:
+                waveform = torch.from_numpy(audio_np.T)
             if waveform.size(0) > 1:
                 waveform = waveform.mean(dim=0, keepdim=True)
             if sr != sample_rate:
@@ -177,7 +191,11 @@ class ValChunksDataset(Dataset):
         ds_idx, start = self.entries[idx]
         path, label = self.full_dataset.samples[ds_idx]
 
-        waveform, sr = torchaudio.load(path)
+        audio_np, sr = sf.read(str(path), dtype='float32')
+        if audio_np.ndim == 1:
+            waveform = torch.from_numpy(audio_np).unsqueeze(0)
+        else:
+            waveform = torch.from_numpy(audio_np.T)
         if waveform.size(0) > 1:
             waveform = waveform.mean(dim=0, keepdim=True)
         if sr != self.sample_rate:
@@ -308,9 +326,9 @@ def evaluate(
 
 
 def main():
-    set_seed(42)
+    set_seed(RANDOM_SEED)
 
-    train_root = Path("train") / "Diarized_full_wave_enhanced_audio"
+    train_root = ADRESS_DIARIZED_DIR
 
     batch_size = 32
     num_epochs = 200
@@ -402,7 +420,8 @@ def main():
 
     best_val_loss = float("inf")
     best_val_acc = 0.0
-    best_model_path = "best_adress_cnn.pt"
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    best_model_path = MODEL_CKPT_PATH
     epochs_no_improve = 0
 
     for epoch in range(1, num_epochs + 1):

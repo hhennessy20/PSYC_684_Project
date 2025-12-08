@@ -1,5 +1,6 @@
 # Harry Hennessy
 import os
+import sys
 from pathlib import Path
 import argparse
 from typing import List, Dict, Tuple
@@ -10,6 +11,11 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from captum.attr import GradientShap
 import torchaudio
+import soundfile as sf
+
+# Add src directory to path for config import
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from config import ADRESS_DIARIZED_DIR, RANDOM_SEED, MODEL_CKPT_PATH
 
 from train_adress_cnn import (
     AudioCNN,
@@ -74,7 +80,11 @@ def make_mel_transform(sample_rate: int = SAMPLE_RATE, n_fft: int = N_FFT, hop_l
 # Full-recording log-mel spectrogram
 def full_logmel_from_wav(wav_path: Path, sample_rate: int = SAMPLE_RATE, n_fft: int = N_FFT, hop_length: int = HOP_LENGTH, n_mels: int = N_MELS,) -> torch.Tensor:
 
-    waveform, sr = torchaudio.load(str(wav_path))
+    audio_np, sr = sf.read(str(wav_path), dtype='float32')
+    if audio_np.ndim == 1:
+        waveform = torch.from_numpy(audio_np).unsqueeze(0)
+    else:
+        waveform = torch.from_numpy(audio_np.T)
 
     if waveform.size(0) > 1:
         waveform = waveform.mean(dim=0, keepdim=True)
@@ -309,20 +319,26 @@ def _enumerate_full_recordings(root: Path,) -> Tuple[List[Path], List[int], List
 
 #Returns a list of dicts for the top-K least/most AD-confident validation recordings.
 def get_saliency_maps_for_pdsm(
-    train_root: str | Path = "train/Diarized_full_wave_enhanced_audio",
-    model_ckpt: str | Path = "best_adress_cnn.pt",
+    train_root: str | Path = None,
+    model_ckpt: str | Path = None,
     val_split: float = 0.2,
     k_most_confident: int = 3,
     k_least_confident: int = 3,
     hop_sec: float = 2.0,
     device: torch.device | None = None,
 ) -> List[Dict]:
-    set_seed(42)
+    set_seed(RANDOM_SEED)
 
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    train_root = Path(train_root)
+    if train_root is None:
+        train_root = ADRESS_DIARIZED_DIR
+    else:
+        train_root = Path(train_root)
+
+    if model_ckpt is None:
+        model_ckpt = MODEL_CKPT_PATH
 
     paths, labels, sids = _enumerate_full_recordings(train_root)
     sids = np.array(sids)
@@ -420,13 +436,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--train_root",
-        default="train/Diarized_full_wave_enhanced_audio",
-        help="Root directory for diarized full-wave audio.",
+        default=None,
+        help="Root directory for diarized full-wave audio. Defaults to ADRESS_DIARIZED_DIR from config.",
     )
     parser.add_argument(
         "--model_ckpt",
-        default="best_adress_cnn.pt",
-        help="Path to trained AudioCNN checkpoint.",
+        default=None,
+        help="Path to trained AudioCNN checkpoint. Defaults to MODEL_CKPT_PATH from config.",
     )
     parser.add_argument(
         "--output_dir",
@@ -459,13 +475,13 @@ def main():
     )
     args = parser.parse_args()
 
-    set_seed(42)
+    set_seed(RANDOM_SEED)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     results = get_saliency_maps_for_pdsm(
-        train_root=args.train_root,
-        model_ckpt=args.model_ckpt,
+        train_root=args.train_root if args.train_root else ADRESS_DIARIZED_DIR,
+        model_ckpt=args.model_ckpt if args.model_ckpt else MODEL_CKPT_PATH,
         val_split=args.val_split,
         k_most_confident=args.k_most_confident,
         k_least_confident=args.k_least_confident,

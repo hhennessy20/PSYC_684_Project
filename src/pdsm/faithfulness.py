@@ -1,13 +1,13 @@
 import os
+import sys
 from pathlib import Path
-
-# Fixes torchcodec and ffmpeg issues
-ffmpeg_dll_dir = Path(r"C:/Users/jackm/miniconda3/Library/bin")  # adjust if your conda root differs
-assert ffmpeg_dll_dir.exists(), ffmpeg_dll_dir
-os.add_dll_directory(str(ffmpeg_dll_dir))
 
 import torch
 import torch.nn.functional as F
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from config import MODEL_CKPT_PATH
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "models" / "cnn"))
 from train_adress_cnn import (
     AudioCNN,
     set_seed,
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="AudioCNN Spectrogram Inference")
-    parser.add_argument("--model", required=True, help="Path to pretrained AudioCNN .pt file")
+    parser.add_argument("--model", default=None, help="Path to pretrained AudioCNN .pt file. Defaults to MODEL_CKPT_PATH from config.")
     parser.add_argument("--data", required=True, help="Directory of spectrogram .pt files")
     parser.add_argument("--batch-size", type=int, default=1)
     args = parser.parse_args()
@@ -105,7 +105,8 @@ if __name__ == "__main__":
         first_spec = first_spec.unsqueeze(0)  # ensure batch
     elif first_spec.dim() == 2:
         first_spec = first_spec.unsqueeze(0).unsqueeze(0)
-    model = load_model(args.model, first_spec)
+    model_path = args.model if args.model else MODEL_CKPT_PATH
+    model = load_model(model_path, first_spec)
     results = infer_directory(model, args.data, batch_size=args.batch_size)
 
     print("\n✔ Inference Complete!")

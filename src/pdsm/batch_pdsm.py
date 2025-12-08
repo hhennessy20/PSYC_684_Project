@@ -1,7 +1,9 @@
 import argparse
 import os
+import sys
 import math
 from pathlib import Path
+
 from ppgs import PHONEME_TO_INDEX_MAPPING, PHONEMES
 import pypar
 
@@ -9,10 +11,6 @@ import matplotlib
 matplotlib.use('Agg')  # non-interactive backend for saving only
 import matplotlib.pyplot as plt
 from collections import Counter
-# Fixes torchcodec and ffmpeg issues
-ffmpeg_dll_dir = Path(r"C:/Users/jackm/miniconda3/Library/bin")  # adjust if your conda root differs
-assert ffmpeg_dll_dir.exists(), ffmpeg_dll_dir
-os.add_dll_directory(str(ffmpeg_dll_dir))
 
 import torch
 

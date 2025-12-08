@@ -1,8 +1,8 @@
 from interpret_gradshap_adress import get_saliency_maps_for_pdsm
 
 results = get_saliency_maps_for_pdsm(
-    train_root="train/Normalised_audio-chunks",
-    model_ckpt="best_adress_cnn.pt",
+    train_root=None,
+    model_ckpt=None,
     val_split=0.2,
     batch_size=32,
     num_examples=4,

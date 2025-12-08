@@ -9,3 +9,12 @@ req.txt
 __pycache__/
 /.vscode/
 !/src/pdsm/.vscode
+
+# ADReSS train_Data subfolders (large audio files)
+data/train_Data/Full_wave_enhanced_audio/
+data/train_Data/Diarized_full_wave_enhanced_audio/
+data/train_Data/Normalised_audio-chunks/
+data/train_Data/transcription/
+
+# Model checkpoints
+data/models/

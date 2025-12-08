@@ -1,16 +1,15 @@
-from interpret_gradshap_adress import get_saliency_maps_for_pdsm
 import argparse
 import os
-# from pathlib import Path
-# from typing import List, Dict, Tuple
+import sys
+from pathlib import Path
 
-# import numpy as np
 import torch
-# import torch.nn.functional as F
-# import matplotlib.pyplot as plt
-# from captum.attr import GradientShap
-# import torchaudio
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from config import MODEL_CKPT_PATH
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "models" / "cnn"))
+from interpret_gradshap_adress import get_saliency_maps_for_pdsm
 from train_adress_cnn import (
     AudioCNN,
     set_seed,
@@ -35,8 +34,8 @@ def main():
     )
     parser.add_argument(
         "--model_ckpt",
-        default="best_adress_cnn.pt",
-        help="Path to trained AudioCNN checkpoint.",
+        default=None,
+        help="Path to trained AudioCNN checkpoint. Defaults to MODEL_CKPT_PATH from config.",
     )
     # parser.add_argument(
     #     "--output_dir",
@@ -63,7 +62,7 @@ def main():
 
     results = get_saliency_maps_for_pdsm(
         train_root=args.train_root,
-        model_ckpt=args.model_ckpt,
+        model_ckpt=args.model_ckpt if args.model_ckpt else MODEL_CKPT_PATH,
         val_split=args.val_split,
         hop_sec=args.hop_sec,
         device=device,

@@ -16,6 +16,16 @@ ADRESS_FULL_WAVE_DIR = ADRESS_TRAIN_ROOT / "Full_wave_enhanced_audio"
 ADRESS_CC_DIR = ADRESS_FULL_WAVE_DIR / "cc"
 ADRESS_CD_DIR = ADRESS_FULL_WAVE_DIR / "cd"
 
+# Diarized full-wave audio (cc / cd) - patient-only segments
+ADRESS_DIARIZED_DIR = ADRESS_TRAIN_ROOT / "Diarized_full_wave_enhanced_audio"
+ADRESS_DIARIZED_CC_DIR = ADRESS_DIARIZED_DIR / "cc"
+ADRESS_DIARIZED_CD_DIR = ADRESS_DIARIZED_DIR / "cd"
+
+# Normalized audio chunks (cc / cd)
+ADRESS_NORMALIZED_DIR = ADRESS_TRAIN_ROOT / "Normalised_audio-chunks"
+ADRESS_NORMALIZED_CC_DIR = ADRESS_NORMALIZED_DIR / "cc"
+ADRESS_NORMALIZED_CD_DIR = ADRESS_NORMALIZED_DIR / "cd"
+
 # Transcriptions (.cha) (cc / cd)
 ADRESS_TRANSCRIPTION_DIR = ADRESS_TRAIN_ROOT / "transcription"
 ADRESS_TRANSCRIPT_CC_DIR = ADRESS_TRANSCRIPTION_DIR / "cc"
@@ -35,6 +45,9 @@ FEATURES_RAW_DIR = DATA_DIR / "features_raw"   # opensmile CSVs
 FEATURES_AGG_DIR = DATA_DIR / "features_agg"   # X, y, scaler, model, etc.
 
 LABELS_CSV = DATA_DIR / "labels_train.csv"
+
+MODELS_DIR = DATA_DIR / "models"
+MODEL_CKPT_PATH = MODELS_DIR / "best_adress_cnn.pt"
 
 # -----------------------------
 # Audio / training settings
