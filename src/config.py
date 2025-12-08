@@ -49,6 +49,10 @@ LABELS_CSV = DATA_DIR / "labels_train.csv"
 MODELS_DIR = DATA_DIR / "models"
 MODEL_CKPT_PATH = MODELS_DIR / "best_adress_cnn.pt"
 
+SALIENCY_DIR = DATA_DIR / "saliencies"     # GradSHAP saliency maps (*_M.pt, *_spec.pt)
+PDSM_DIR = DATA_DIR / "pdsm_out"           # PDSM outputs (*.pt)
+PPG_DIR = DATA_DIR / "ppg_out"             # Phoneme posteriorgrams (*.pt)
+
 # -----------------------------
 # Audio / training settings
 # -----------------------------

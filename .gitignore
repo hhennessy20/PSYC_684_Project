@@ -18,3 +18,8 @@ data/train_Data/transcription/
 
 # Model checkpoints
 data/models/
+
+# Generated saliency maps and PDSM outputs
+data/saliencies/
+data/pdsm_out/
+data/ppg_out/
