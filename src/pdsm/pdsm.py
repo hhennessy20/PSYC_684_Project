@@ -108,7 +108,7 @@ def plot_pdsm(M, Mc, spec, selected_phonemes, out_file_path, includeInputVisuals
     
     
 
-def preprocess(M, mode="threshold"):
+def preprocess(M, mode="threshold", threshold_val=0):
     """
     User-defined Preprocessing of saliency map M
     M: Tensor [F, T]
@@ -116,7 +116,7 @@ def preprocess(M, mode="threshold"):
     """
     # threshold
     if mode == "threshold":
-        return M.clamp(min=0)
+        return M.clamp(min=threshold_val)
     elif mode == "absolute":
         return torch.abs(M)
     else:
@@ -162,7 +162,7 @@ def get_phoneme_boundaries(X_ep):
     return boundaries
 
 
-def phoneme_discretization(M, X_p, k=0, preprocess_mode="threshold", pool_mode="sum"):
+def phoneme_discretization(M, X_p, k=0, preprocess_mode="threshold", threshold_val=0, pool_mode="sum"):
     """
     Core algorithm.
     Inputs:
@@ -175,7 +175,7 @@ def phoneme_discretization(M, X_p, k=0, preprocess_mode="threshold", pool_mode="
 
     # Step 1: preprocess
     print("Preprocessing")
-    Mf = preprocess(M, preprocess_mode)
+    Mf = preprocess(M, preprocess_mode, threshold_val)
     # Mf = M
 
     # Step 2: time-to-phoneme alignment

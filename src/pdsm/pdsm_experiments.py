@@ -8,8 +8,17 @@ from batch_pdsm import run_batch
 from faithfulness import run_faithfulness
 
 def experiment_preprocess_pool(saliency_dir, ppgs_dir, output_dir, top_k, save_pt, overwrite_pdsm_pt=True):
+    """Tests the 4 possible combinations of preprocess_mode and pool_mode.
     
-    # All 4 combinations
+    Parameters:
+    saliency_dir (str): Path to saliency maps
+    ppgs_dir (str): Path to PPG .pt files
+    output_dir (str): Where to save output
+    top_k (int): Number of phonemes to keep. Defaults to 1/4
+    save_pt (bool): Whether to save the pdsm .pt files
+    overwrite_pdsm_pt (bool): Whether to overwrite existing pdsm .pt files
+    """
+    
     preprocess_modes = ["threshold", "absolute"]
     pool_modes = ["sum", "mean"]
 
@@ -19,9 +28,11 @@ def experiment_preprocess_pool(saliency_dir, ppgs_dir, output_dir, top_k, save_p
             combo_name = f"{preprocess}_{pool}"
             combo_save_dir = os.path.join(output_dir, combo_name)
 
-
             print(f"Running combo: {combo_name}")
+            
             k_top_phon = top_k if top_k > 0 else "auto"
+            
+            # Generate PDSM output
             if overwrite_pdsm_pt:
                 k_top_phon = run_batch(
                     saliency_dir,
@@ -33,10 +44,14 @@ def experiment_preprocess_pool(saliency_dir, ppgs_dir, output_dir, top_k, save_p
                     save_pt,
                     experiment_name=combo_name
                 )
+                
             csv_fn = os.path.join(combo_save_dir, f"{combo_name}_faithfulness_results_k{k_top_phon}.csv")
             csv_out_paths.append(csv_fn)
-            run_faithfulness(Path(saliency_dir), Path(ppgs_dir), Path(combo_save_dir), k_top_phon, csv_output_fn=csv_fn)
             
+            # Run faithfulness evaluation for this combo
+            run_faithfulness(Path(saliency_dir), Path(ppgs_dir), Path(combo_save_dir), k_top_phon, csv_output_fn=csv_fn)
+        
+    # Print summary of results
     print_csv_results(csv_out_paths)
     
 

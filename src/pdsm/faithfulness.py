@@ -182,7 +182,7 @@ def compute_faithfulness(model, spec, saliency_map, window_frames, device=DEVICE
     return ff, p_original, p_masked
 
 
-def generate_saliency_maps(output_dir, model_ckpt=None, device=DEVICE):
+def generate_saliency_maps(output_dir, model_ckpt=None, device=DEVICE, val_split=0.2):
     """Generate spectrograms and GradSHAP saliency maps."""
     from interpret_gradshap_adress import get_saliency_maps_for_pdsm
     
@@ -199,7 +199,7 @@ def generate_saliency_maps(output_dir, model_ckpt=None, device=DEVICE):
     results = get_saliency_maps_for_pdsm(
         train_root=ADRESS_DIARIZED_DIR,
         model_ckpt=model_ckpt,
-        val_split=0.2,
+        val_split=val_split,
         k_most_confident=1000,
         k_least_confident=1000,
         hop_sec=2.0,
@@ -481,8 +481,8 @@ def print_results(all_results, include_pdsm=True):
     
     
     
-def run_faithfulness(saliency_dir, ppg_dir, pdsm_dir, top_k, gradshap_dir="", no_generate=False, skip_pdsm=False, model_path=MODEL_CKPT_PATH,  csv_output_fn=""):
-    
+def run_faithfulness(saliency_dir, ppg_dir, pdsm_dir, top_k, gradshap_dir="", no_generate=False, skip_pdsm=False, model_path=MODEL_CKPT_PATH,  csv_output_fn="", val_split=0.2):
+    import random
     subject_ids = []
     
     if not gradshap_dir:
@@ -496,7 +496,7 @@ def run_faithfulness(saliency_dir, ppg_dir, pdsm_dir, top_k, gradshap_dir="", no
         print(f"\nFound {len(subject_ids)} existing saliency maps in {saliency_dir}")
     elif not no_generate:
         print(f"\nNo saliency maps found. Generating...")
-        subject_ids = generate_saliency_maps(saliency_dir, model_path, DEVICE)
+        subject_ids = generate_saliency_maps(saliency_dir, model_path, DEVICE, val_split)
     else:
         print(f"\nNo saliency maps found in {saliency_dir}")
         return
@@ -620,6 +620,10 @@ def main():
         "--no_generate", action="store_true",
         help="Don't auto-generate missing components, use only existing files.",
     )
+    parser.add_argument(
+        "--val_split", type=float, default=0.2,
+        help="Top-k phonemes for PDSM. Default: 1/4 of boundaries.",
+    )
     args = parser.parse_args()
 
     print(f"Using device: {DEVICE}")
@@ -642,6 +646,7 @@ def main():
         args.skip_pdsm,
         model_path,
         args.output,
+        args.val_split
     )
     
 

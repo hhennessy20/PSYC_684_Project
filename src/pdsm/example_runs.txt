@@ -1,3 +1,18 @@
+=== faithfulness.py ===
+
+Generate outputs for ALL diarized wav files
+python .\src\pdsm\faithfulness.py --spec_dir data\full_output_diarized\saliencies --gradshap_dir data\full_output_diarized\saliencies --ppg_dir data\full_output_diarized\ppg_out --pdsm_dir data\full_output_diarized\pdsm_out --output faithfulness_ALLWAVS.csv --val_split 1.0
+
+>> Then i organized into cc and cd subdirectories manually before doing the next runs
+
+> Compute faithfulness for CC group
+python .\src\pdsm\faithfulness.py --spec_dir data\full_output_diarized\saliencies\cc --gradshap_dir data\full_output_diarized\saliencies\cc --ppg_dir data\full_output_diarized\ppg_out\cc --pdsm_dir data\full_output_diarized\pdsm_out\cc --output faithfulness_cc.csv 
+
+
+> Compute faithfulness for CD group
+python .\src\pdsm\faithfulness.py --spec_dir data\full_output_diarized\saliencies\cd --gradshap_dir data\full_output_diarized\saliencies\cd --ppg_dir data\full_output_diarized\ppg_out\cd --pdsm_dir data\full_output_diarized\pdsm_out\cd --output faithfulness_cd.csv
+
+
 === batch_pdsm.py === 
 
 Experiment for testing preprocess and pool functions
