@@ -2,6 +2,8 @@ import argparse
 from collections import Counter
 import os
 
+import numpy as np
+
 from batch_pdsm import run_batch
 
 import pandas as pd
@@ -28,6 +30,14 @@ def visualize_best_topk(csv_fn):
     grouped_std  = df.groupby("top_k")[faithfulness_cols].std()
 
     # Plotting
+    plt.rcParams.update({
+        "font.size": 18,         # General font size
+        "axes.titlesize": 20,    # Title
+        "axes.labelsize": 18,    # Axis labels
+        "xtick.labelsize": 16,   # Tick labels
+        "ytick.labelsize": 16,
+        "legend.fontsize": 16
+    })
     plt.figure(figsize=(10, 6))
 
     for col in faithfulness_cols:
@@ -88,6 +98,15 @@ def plot_phoneme_hist(csv_fn, keep_silence):
     labels = [PHONEMES[i] for i in ids]
 
     # Plot histogram
+    plt.rcParams.update({
+        "font.size": 18,         # General font size
+        "axes.titlesize": 20,    # Title
+        "axes.labelsize": 18,    # Axis labels
+        "xtick.labelsize": 16,   # Tick labels
+        "ytick.labelsize": 16,
+        "legend.fontsize": 16
+    })
+    
     plt.figure(figsize=(14, 6))
     plt.bar(labels, counts)
     plt.xlabel("Phoneme")
@@ -120,6 +139,14 @@ def plot_phoneme_flag_rate(csv_fn, keep_silence):
     flag_rate = flag_rate.sort_values(ascending=False)
 
     # Plot
+    plt.rcParams.update({
+        "font.size": 18,         # General font size
+        "axes.titlesize": 20,    # Title
+        "axes.labelsize": 18,    # Axis labels
+        "xtick.labelsize": 16,   # Tick labels
+        "ytick.labelsize": 16,
+        "legend.fontsize": 16
+    })
     
     plt.figure(figsize=(14, 6))
     plt.bar(flag_rate.index, flag_rate.values)
@@ -139,7 +166,7 @@ def plot_phoneme_flag_rate(csv_fn, keep_silence):
     
 def plot_phoneme_duration_hist(csv_fn):
     # Load CSV
-    df = pd.read_csv("phonemes.csv")
+    df = pd.read_csv(csv_fn)
 
     # Compute duration
     df["duration"] = df["end_frame"] - df["start_frame"]
@@ -148,28 +175,93 @@ def plot_phoneme_duration_hist(csv_fn):
     df_selected = df[df["selected"] == True]
     df_unselected = df[df["selected"] == False]
     
+    plt.rcParams.update({
+        "font.size": 18,         # General font size
+        "axes.titlesize": 20,    # Title
+        "axes.labelsize": 18,    # Axis labels
+        "xtick.labelsize": 16,   # Tick labels
+        "ytick.labelsize": 16,
+        "legend.fontsize": 16
+    })
+    
+    base_name = csv_fn.removesuffix("_selected_phonemes.csv")
     # ---- 1️⃣ Distribution for selected phonemes ---- #
     plt.figure(figsize=(8, 5))
-    plt.hist(df_selected["duration"], bins=30, color="blue", alpha=0.7)
+    plt.hist(df_selected["duration"], bins=100, color="blue", alpha=0.7)
     plt.title("Duration Distribution of Selected Phonemes")
     plt.xlabel("Duration (frames)")
     plt.ylabel("Count")
     plt.grid(axis="y", linestyle="--", alpha=0.6)
     plt.tight_layout()
-    plt.savefig("selected_phonemes_duration.png")
+    
+    save_path = f"{base_name}_selected_phonemes_duration.png"
+    plt.savefig(save_path)
     plt.close()
+    
+    plot_duration_flag_rate(csv_fn)
     
     # ---- 3️⃣ Distribution for all phonemes ---- #
-    plt.figure(figsize=(8, 5))
-    plt.hist(df["duration"], bins=30, color="green", alpha=0.7)
-    plt.title("Duration Distribution of All Phonemes")
-    plt.xlabel("Duration (frames)")
-    plt.ylabel("Count")
+    # plt.figure(figsize=(8, 5))
+    # plt.hist(df["duration"], bins=100, color="green", alpha=0.7)
+    # plt.title("Duration Distribution of All Phonemes")
+    # plt.xlabel("Duration (frames)")
+    # plt.ylabel("Count")
+    # plt.grid(axis="y", linestyle="--", alpha=0.6)
+    # plt.tight_layout()
+    # save_path = f"{base_name}_all_phonemes_duration.png"
+    # plt.savefig(save_path)
+    # plt.close()
+
+def plot_duration_flag_rate(csv_fn, keep_silence=True, bin_size=50, max_duration=None):
+    df = pd.read_csv(csv_fn)
+
+    # Optionally remove silence
+    if not keep_silence:
+        df = df[df["phoneme_label"] != "SIL"]  # adjust token if needed
+
+    # Compute duration
+    df["duration"] = df["end_frame"] - df["start_frame"]
+
+    # Auto determine max duration if not provided
+    if max_duration is None:
+        max_duration = df["duration"].max()
+
+    # Create duration bins
+    bins = np.arange(0, max_duration + bin_size, bin_size)
+    df["duration_bin"] = pd.cut(df["duration"], bins=bins, right=False)
+
+    # Count total & selected in each bin
+    total_counts = df.groupby("duration_bin").size()
+    selected_counts = df[df["selected"]].groupby("duration_bin").size()
+
+    # Compute flag rate
+    flag_rate = selected_counts.reindex(total_counts.index, fill_value=0) / total_counts
+
+    # Plot setup for LaTeX two-column figures
+    plt.rcParams.update({
+        "font.size": 18,
+        "axes.titlesize": 20,
+        "axes.labelsize": 18,
+        "xtick.labelsize": 14,
+        "ytick.labelsize": 14
+    })
+
+    # Plot
+    plt.figure(figsize=(8, 6))
+    flag_rate.plot(kind="bar", alpha=0.8)
+    plt.title("Selection Rate by Duration Bin")
+    plt.xlabel("Duration Range (frames)")
+    plt.ylabel("Selection Rate")
+    plt.ylim(0, 1)  # since rate is 0–1
     plt.grid(axis="y", linestyle="--", alpha=0.6)
     plt.tight_layout()
-    plt.savefig("all_phonemes_duration.png")
-    plt.close()
     
+    base_name = csv_fn.removesuffix("_selected_phonemes.csv")
+    save_path = f"{base_name}_duration_flag_rate.png"
+    plt.savefig(save_path, dpi=300)
+
+    print(f"Saved: {save_path}")
+    return flag_rate
 
 def main():
     parser = argparse.ArgumentParser()
@@ -199,7 +291,7 @@ def main():
     # Generate figures for use in report
     
     if args.experiment == "phoneme_duration_hist":
-        pass
+        plot_phoneme_duration_hist(args.csv_input)
     elif args.experiment == "phoneme_freq":
         plot_phoneme_hist(args.csv_input, args.keep_silence)
     elif args.experiment == "phon_flag_rate":
