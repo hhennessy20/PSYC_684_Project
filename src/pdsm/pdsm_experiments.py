@@ -3,29 +3,33 @@ import argparse, os
 from pathlib import Path
 
 from batch_pdsm import run_batch
+from faithfulness import run_faithfulness
 
-def experiment_preprocess_pool(saliency_map_paths, ppg_paths, output_dir, top_k, save_pt):
+def experiment_preprocess_pool(saliency_dir, ppgs_dir, output_dir, top_k, save_pt):
+    
     # All 4 combinations
-        preprocess_modes = ["threshold", "absolute"]
-        pool_modes = ["sum", "mean"]
+    preprocess_modes = ["threshold", "absolute"]
+    pool_modes = ["sum", "mean"]
 
-        for preprocess in preprocess_modes:
-            for pool in pool_modes:
-                combo_name = f"{preprocess}_{pool}"
-                combo_save_dir = os.path.join(output_dir, combo_name)
+    for preprocess in preprocess_modes:
+        for pool in pool_modes:
+            combo_name = f"{preprocess}_{pool}"
+            combo_save_dir = os.path.join(output_dir, combo_name)
 
 
-                print(f"Running combo: {combo_name}")
-                run_batch(
-                    saliency_map_paths,
-                    ppg_paths,
-                    top_k,
-                    combo_save_dir,
-                    preprocess,
-                    pool,
-                    save_pt,
-                    experiment_name=combo_name
-                )
+            print(f"Running combo: {combo_name}")
+            k_top_phon = run_batch(
+                saliency_dir,
+                ppgs_dir,
+                top_k,
+                combo_save_dir,
+                preprocess,
+                pool,
+                save_pt,
+                experiment_name=combo_name
+            )
+            
+            run_faithfulness(Path(saliency_dir), Path(ppgs_dir), Path(combo_save_dir), k_top_phon, csv_output_fn=os.path.join(combo_save_dir, f"{combo_name}_faithfulness_results_k{k_top_phon}.csv"))
 
 
 
@@ -46,13 +50,10 @@ def main():
     
     os.makedirs(args.save_dir, exist_ok=True)
     
-    saliency_map_paths = sorted(Path(args.M_path).glob("*_M.pt"))
-    ppg_paths = sorted(Path(args.X_p_path).glob("*.pt"))
-    
     if args.experiment == "preprocess_pool":
-        experiment_preprocess_pool(saliency_map_paths, ppg_paths, args.save_dir, args.k, args.save_pt)
+        experiment_preprocess_pool(args.M_path, args.X_p_path, args.save_dir, args.k, args.save_pt)
     else: # default options
-        run_batch(saliency_map_paths, ppg_paths, args.k, args.save_dir, "threshold", "sum", args.save_pt)
+        run_batch(args.M_path, args.X_p_path, args.k, args.save_dir, "threshold", "sum", args.save_pt)
     
 
 if __name__ == "__main__":

@@ -481,9 +481,12 @@ def print_results(all_results, include_pdsm=True):
     
     
     
-def run_faithfulness(saliency_dir, ppg_dir, pdsm_dir, model_path, gradshap_dir, no_generate, skip_pdsm, top_k, output):
+def run_faithfulness(saliency_dir, ppg_dir, pdsm_dir, top_k, gradshap_dir="", no_generate=False, skip_pdsm=False, model_path=MODEL_CKPT_PATH,  csv_output_fn=""):
     
     subject_ids = []
+    
+    if not gradshap_dir:
+        gradshap_dir = saliency_dir
     
     # Step 1: Check/generate saliency maps
     existing_specs = list(saliency_dir.glob("*_spec.pt")) if saliency_dir.exists() else []
@@ -552,9 +555,9 @@ def run_faithfulness(saliency_dir, ppg_dir, pdsm_dir, model_path, gradshap_dir, 
     print_results(all_results, include_pdsm=include_pdsm)
     
     # Optionally save to CSV
-    if output:
+    if csv_output_fn:
         import csv
-        with open(output, "w", newline="") as f:
+        with open(csv_output_fn, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow([
                 "subject", 
@@ -573,7 +576,7 @@ def run_faithfulness(saliency_dir, ppg_dir, pdsm_dir, model_path, gradshap_dir, 
                     pdsm.get("p_original", ""),
                     pdsm.get("p_masked", ""),
                 ])
-        print(f"\nResults saved to {output}")
+        print(f"\nResults saved to {csv_output_fn}")
 
 
 def main():
@@ -633,11 +636,11 @@ def main():
         saliency_dir,
         ppg_dir,
         pdsm_dir,
-        model_path,
+        args.top_k,
         gradshap_dir,
         args.no_generate,
         args.skip_pdsm,
-        args.top_k,
+        model_path,
         args.output,
     )
     

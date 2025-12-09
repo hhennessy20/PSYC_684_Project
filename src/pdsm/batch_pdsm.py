@@ -40,8 +40,9 @@ def plot_phoneme_hist(selected_phonemes, tot_samples, out_file, k):
     plt.savefig(out_file)
 
 
-def run_batch(saliency_map_paths, ppg_paths, top_k, output_dir, preprocess_mode, pool_mode, save_pt=False, experiment_name=""):
-    ppg_paths_cpy = ppg_paths.copy()
+def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode, pool_mode, save_pt=False, experiment_name=""):
+    saliency_map_paths = sorted(Path(saliency_dir).glob("*_M.pt"))
+    ppg_paths = sorted(Path(ppgs_dir).glob("*.pt"))
     all_phonemes = []
     processed_ctr = 0
     os.makedirs(output_dir, exist_ok=True)
@@ -50,10 +51,10 @@ def run_batch(saliency_map_paths, ppg_paths, top_k, output_dir, preprocess_mode,
         patientID = os.path.splitext(os.path.basename(M_path))[0][:4] # first 4 chars are patient id
         ppg_path = ""
         
-        for i,p in enumerate(ppg_paths_cpy):
+        for i,p in enumerate(ppg_paths):
             if patientID in str(p):
                 ppg_path = p
-                ppg_paths_cpy.pop(i)
+                ppg_paths.pop(i)
                 break
         
         # Load inputs
@@ -82,6 +83,8 @@ def run_batch(saliency_map_paths, ppg_paths, top_k, output_dir, preprocess_mode,
     # change cc <-> cd depending on input
     hist_fn = f"{experiment_name}_phoneme_hist_nosilence_k{k}.png" if experiment_name else f"phoneme_hist_nosilence_k{k}.png"
     plot_phoneme_hist(all_phonemes,processed_ctr, os.path.join(output_dir, hist_fn), top_k)
+    
+    return k
     
     
 def main():
