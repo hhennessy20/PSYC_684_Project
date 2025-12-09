@@ -92,6 +92,7 @@ def experiment_phon_in_mask(max_k=1000, starting_k=1, saliency_dir="", ppgs_dir=
     
         # Generate PDSM output
         # Default preprocess_mode and pool_mode
+        print(f"Generating PDSMs. Keepign {top_k} phonemes")
         k_top_phon, maxed_out = run_batch(
             saliency_dir,
             ppgs_dir,

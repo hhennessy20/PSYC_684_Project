@@ -4,10 +4,10 @@ import sys
 import math
 from pathlib import Path
 
-from ppgs import PHONEME_TO_INDEX_MAPPING, PHONEMES
-import pypar
+
 
 import matplotlib
+import pandas as pd
 matplotlib.use('Agg')  # non-interactive backend for saving only
 import matplotlib.pyplot as plt
 from collections import Counter
@@ -17,31 +17,11 @@ import torch
 from pdsm import phoneme_discretization
 
 
-def plot_phoneme_hist(selected_phonemes, tot_samples, out_file, k):
-    
-    phoneme_counts = Counter(p['phoneme_id'] for p in selected_phonemes if PHONEMES[p['phoneme_id']] != pypar.SILENCE)
 
-    # Sort by frequency descending
-    sorted_items = sorted(phoneme_counts.items(), key=lambda x: x[1], reverse=True)
-
-    # Separate into lists
-    ids   = [item[0] for item in sorted_items]
-    counts = [item[1] for item in sorted_items]
-    labels = [PHONEMES[i] for i in ids]
-
-    # Plot histogram
-    plt.figure(figsize=(14, 6))
-    plt.bar(labels, counts)
-    plt.xlabel("Phoneme")
-    plt.ylabel("Frequency")
-    plt.title(f"Flagged Phoneme Histogram (k={k}, Across {tot_samples} WAV)")
-    plt.xticks(rotation=90)
-    plt.tight_layout()
-    plt.savefig(out_file)
 
 
 def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode="threshold", pool_mode="sum"
-              , threshold_val=0, save_pt=False, experiment_name="", save_hist=False):
+              , threshold_val=0, save_pt=False, experiment_name="", save_csv=False, verbose=False):
     saliency_map_paths = sorted(Path(saliency_dir).glob("*_M.pt"))
     ppg_paths = sorted(Path(ppgs_dir).glob("*.pt"))
     all_phonemes = []
@@ -64,7 +44,7 @@ def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode="thresh
         X_p = torch.load(ppg_path)    # expected shape [N, T]
         
         # Run algorithm
-        Mc, selected_phonemes, hit_max_phonemes = phoneme_discretization(M, X_p, top_k, preprocess_mode, threshold_val, pool_mode)
+        Mc, selected_phonemes, hit_max_phonemes = phoneme_discretization(M, X_p, top_k, preprocess_mode, threshold_val, pool_mode, verbose)
         
         # Set true once, stop once we max out on first sample.
         # Only want to run PDSM if we will get data for all samples
@@ -82,18 +62,20 @@ def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode="thresh
         # Save output
         
         base = os.path.splitext(os.path.basename(M_path))[0]
-        print(f"{base} Done")
+        if verbose: print(f"{base} Done")
         
         if save_pt:
             
             out_file = os.path.join(output_dir, f"{base[:4]}.pt")
             torch.save(Mc, out_file)
-            print(f"Saved binarized phoneme discretized saliency map to {out_file}")
+            if verbose: print(f"Saved binarized phoneme discretized saliency map to {out_file}")
     
-    if save_hist:
+    if save_csv:
         
-        hist_fn = f"{experiment_name}_phoneme_hist_nosilence_k{k}.png" if experiment_name else f"phoneme_hist_nosilence_k{k}.png"
-        plot_phoneme_hist(all_phonemes,processed_ctr, os.path.join(output_dir, hist_fn), k)
+        csv_fn = f"{experiment_name}_k{k}_selected_phonemes.csv" if experiment_name else f"k{k}_selected_phonemes.csv.png"
+        df = pd.DataFrame(all_phonemes)
+        df.to_csv(os.path.join(output_dir, csv_fn), index=False)
+        if verbose: print(f"Saved all selected phonemes to {csv_fn}")
     
     # helpful for Faithfulness vs top_k experiment. 
     return k, maxed_out

@@ -162,7 +162,7 @@ def get_phoneme_boundaries(X_ep):
     return boundaries
 
 
-def phoneme_discretization(M, X_p, k=.25, preprocess_mode="threshold", threshold_val=0, pool_mode="sum"):
+def phoneme_discretization(M, X_p, k=.25, preprocess_mode="threshold", threshold_val=0, pool_mode="sum", verbose=True):
     """
     Core algorithm.
     Inputs:
@@ -174,12 +174,12 @@ def phoneme_discretization(M, X_p, k=.25, preprocess_mode="threshold", threshold
     """
 
     # Step 1: preprocess
-    print("Preprocessing")
+    if verbose: print("Preprocessing")
     Mf = preprocess(M, preprocess_mode, threshold_val)
     # Mf = M
 
     # Step 2: time-to-phoneme alignment
-    print("Aligning phonemes and collecting boundaries")
+    if verbose: print("Aligning phonemes and collecting boundaries")
     X_ep = torch.argmax(X_p, dim=0)  # [T]
 
     # Step 3: determine phoneme boundaries
@@ -192,8 +192,14 @@ def phoneme_discretization(M, X_p, k=.25, preprocess_mode="threshold", threshold
     else:
         if k >= len(boundaries):
             maxed_out = True
-        k = min(int(k*len(boundaries)), len(boundaries))
-    print(f"Pooling energy per phoneme segment. Keeping {k} highest energy phonemes")
+            
+        if isinstance(k, float):
+            k = min(int(k*len(boundaries)), len(boundaries))
+            
+        else:
+            k = min(k, len(boundaries))
+            
+    if verbose: print(f"Pooling energy per phoneme segment. Keeping {k} highest energy phonemes")
     energies = np.array([pool(Mf[:, s:e], pool_mode) for (_, s, e) in boundaries])
 
     # Step 5: select top-k phonemes by energy
@@ -203,7 +209,7 @@ def phoneme_discretization(M, X_p, k=.25, preprocess_mode="threshold", threshold
     Mc = torch.zeros_like(M)
 
     # Step 7: fill mask & track labels
-    print("Binarizing")
+    if verbose: print("Binarizing")
     selected_phonemes = []
     for idx in top_k_indices:
         p, s, e = boundaries[idx]
@@ -211,12 +217,12 @@ def phoneme_discretization(M, X_p, k=.25, preprocess_mode="threshold", threshold
         selected_phonemes.append({
             "phoneme_id": int(p),
             "phoneme_label": PHONEMES[int(p)],
-            "start": int(s),
-            "end": int(e)
+            "start_frame": int(s),
+            "end_frame": int(e)
         })
 
     # Sort segments by start time for clean plotting
-    selected_phonemes.sort(key=lambda x: x["start"])
+    selected_phonemes.sort(key=lambda x: x["start_frame"])
 
     return Mc, selected_phonemes, maxed_out
 
