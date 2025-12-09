@@ -13,7 +13,7 @@ python .\src\pdsm\faithfulness.py --spec_dir data\full_output_diarized\saliencie
 python .\src\pdsm\faithfulness.py --spec_dir data\full_output_diarized\saliencies\cd --gradshap_dir data\full_output_diarized\saliencies\cd --ppg_dir data\full_output_diarized\ppg_out\cd --pdsm_dir data\full_output_diarized\pdsm_out\cd --output faithfulness_cd.csv
 
 
-=== batch_pdsm.py === 
+=== pdsm_experiments.py === 
 
 > Experiment for testing preprocess and pool functions
 
@@ -23,4 +23,16 @@ python ./src/pdsm/pdsm_experiments.py --experiment preprocess_pool --M_path data
 
 > Experiment for finding best top_k
 
-python ./src/pdsm/pdsm_experiments.py --experiment best_topk --M_path data\full_output_diarized\saliencies\cd --X_p_path data\full_output_diarized\ppg_out\cd --pdsm_save_dir src\pdsm\experiment_results\experiment_bestTopK_cd --save_pt 
+python ./src/pdsm/pdsm_experiments.py --experiment best_topk --M_path data\full_output_diarized\saliencies\cd --X_p_path data\full_output_diarized\ppg_out\cd --pdsm_save_dir src\pdsm\experiment_results\experiment_bestTopK__fractional_cd --save_pt --k 1.0
+
+python ./src/pdsm/pdsm_experiments.py --experiment best_topk --M_path data\full_output_diarized\saliencies\cd --X_p_path data\full_output_diarized\ppg_out\cd --pdsm_save_dir src\pdsm\experiment_results\experiment_bestTopK_cd --save_pt --k 1000
+
+
+> Single run
+python ./src/pdsm/pdsm_experiments.py --experiment single --M_path data\full_output_diarized\saliencies\cd --X_p_path data\full_output_diarized\ppg_out\cd --pdsm_save_dir src\pdsm\experiment_results\single_runs --k 100 --save_pt
+
+=== visualize.py ===
+
+> Visualizing graphs for Faithfulness vs top_k
+
+python ./src/pdsm/visualize.py best_topk --csv_input src\pdsm\experiment_results\experiment_bestTopK_cd\experiment_topk_ff_threshSum.csv

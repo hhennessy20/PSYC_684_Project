@@ -10,45 +10,50 @@ import matplotlib.pyplot as plt
 from ppgs import PHONEMES
 import pypar
 
-def visualize_best_topk(csv_fn, output_dir):
-    """Generate graphs of mean Faithfulness vs topk for gradshap and PDSM."""
+def visualize_best_topk(csv_fn):
+    """Generate graphs of mean Faithfulness vs topk for PDSM."""
     # Load CSV
     df = pd.read_csv(csv_fn)
 
     # Define columns we're interested in for averaging
-    faithfulness_cols = [
-        "gradshap_ff",
-        "pdsm_ff"
-    ]
+    faithfulness_cols = ["pdsm_ff"]
+    
+    
+    pretty_names = {
+        "pdsm_ff": "PDSM"
+    }
 
-    # Group by top_k and compute mean for relevant columns
-    grouped_df = df.groupby("top_k")[faithfulness_cols].mean()
-
-    # Plotting
-    os.makedirs(output_dir, exist_ok=True)
+    # Group by top_k → mean and std
+    grouped_mean = df.groupby("top_k")[faithfulness_cols].mean()
+    grouped_std  = df.groupby("top_k")[faithfulness_cols].std()
 
     # Plotting
     plt.figure(figsize=(10, 6))
+
     for col in faithfulness_cols:
-        plt.plot(grouped_df.index, grouped_df[col], marker='o', linestyle='-', label=pretty_names.get(col, col))
+        plt.errorbar(
+            grouped_mean.index,
+            grouped_mean[col],
+            yerr=grouped_std[col],
+            marker='o',
+            linestyle='-',
+            capsize=4,
+            label=pretty_names.get(col, col)
+        )
 
     plt.title("Faithfulness vs Top-K")
     plt.xlabel("Top-K")
     plt.ylabel("Mean Faithfulness")
     plt.grid(True, linestyle='--', alpha=0.5)
-    pretty_names = {
-    "gradshap_ff": "GradSHAP Faithfulness",
-    "pdsm_ff": "PDSM Faithfulness"
-}
+    
     plt.legend()
     
     # Save figure
-    out_file = os.path.join(output_dir, "faithfulness_vs_topk.png")
-    plt.savefig(out_file, bbox_inches="tight")
+    plt.savefig("faithfulness_vs_topk.png", bbox_inches="tight")
     plt.close()
     
     
-def plot_phoneme_hist(csv_fn, out_file, keep_silence):
+def plot_phoneme_hist(csv_fn, keep_silence):
     """
     Data model of the csv:
     {
@@ -93,27 +98,32 @@ def plot_phoneme_hist(csv_fn, out_file, keep_silence):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--experiment",
-                    type=str,
-                    choices=["default", "phoneme_duration_hist", "phoneme_freq", "best_topk"],
-                    default="default",
-                    help="Select which experiment configuration to run."
-                )
-    parser.add_argument("--csv_input", type=str, required=False, help="Path to CSV input file for visualization experiments")
+    subparsers = parser.add_subparsers(dest="experiment", required=True)
+
+    # ---- Subparser: phoneme_duration_hist ----
+    p_pdh = subparsers.add_parser("phoneme_duration_hist", help="Plot phoneme duration histogram")
+    p_pdh.add_argument("--csv_input", type=str, required=True, help="CSV file with durations")
+
+    # ---- Subparser: phoneme_freq ----
+    p_pf = subparsers.add_parser("phoneme_freq", help="Plot phoneme frequency")
+    p_pf.add_argument("--csv_input", type=str, required=True, help="CSV file with frequencies")
+    p_pf.add_argument("--keep_silence",  action="store_true")
+
+    # ---- Subparser: best_topk ----
+    p_topk = subparsers.add_parser("best_topk", help="Run best_topk experiment")
+    p_topk.add_argument("--csv_input", type=str, required=True, help="CSV file with faithfulness for different k values")
+
     args = parser.parse_args()
     
-    os.makedirs(args.pdsm_save_dir, exist_ok=True)
     
     # Generate figures for use in report
     
     if args.experiment == "phoneme_duration_hist":
         pass
     elif args.experiment == "phoneme_freq":
-        plot_phoneme_hist(args.csv_input, )
+        plot_phoneme_hist(args.csv_input, args.keep_silence)
     elif args.experiment == "best_topk":
-        pass
-    else: # default options
-        run_batch(args.M_path, args.X_p_path, args.k, args.pdsm_save_dir, "threshold", "sum", args.save_pt)
+        visualize_best_topk(args.csv_input)
     
 
 if __name__ == "__main__":

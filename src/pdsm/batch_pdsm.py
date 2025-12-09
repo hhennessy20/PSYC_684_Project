@@ -72,7 +72,7 @@ def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode="thresh
     
     if save_csv:
         
-        csv_fn = f"{experiment_name}_k{k}_selected_phonemes.csv" if experiment_name else f"k{k}_selected_phonemes.csv.png"
+        csv_fn = f"{experiment_name}_k{k}_selected_phonemes.csv" if experiment_name else f"k{k}_selected_phonemes.csv"
         df = pd.DataFrame(all_phonemes)
         df.to_csv(os.path.join(output_dir, csv_fn), index=False)
         if verbose: print(f"Saved all selected phonemes to {csv_fn}")

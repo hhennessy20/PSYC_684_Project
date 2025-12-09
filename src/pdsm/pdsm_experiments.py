@@ -3,6 +3,7 @@ import glob
 import argparse, os
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
@@ -80,19 +81,27 @@ def print_csv_results_prepool(csv_paths):
 
     return summary_df
 
-def experiment_phon_in_mask(max_k=1000, starting_k=1, saliency_dir="", ppgs_dir="", output_dir=""
+def experiment_phon_in_mask(max_k=1000.0, starting_k=1, saliency_dir="", ppgs_dir="", output_dir=""
                             , save_pt=False, clean_temp=True):
     """This experiment computes faithfulness for different values of top_k. max_k defaults to the total number of phonemes."""
     
     full_df = pd.DataFrame()
     maxed_out = False
-    for top_k in tqdm(range(starting_k, max_k + 1, 10), "Running top_k faithfulness experiments", leave=True):
+    
+    if max_k <= 1.0:
+        k_range = np.arange(0.05, max_k, 0.05)
+        print(f"Will try {len(k_range)} top_k values from 5% to {int(max_k*100)}% of total phonemes")
+    else:
+        k_range = range(starting_k, int(max_k) + 1, 10)
+        print(f"Will try {len(k_range)} top_k values from {starting_k} to {int(max_k)} phonemes")
+        
+    for top_k in tqdm(k_range, "Running top_k faithfulness experiments", leave=True):
         
         subdir_name = os.path.join(output_dir, f"topk_{top_k}") 
     
         # Generate PDSM output
         # Default preprocess_mode and pool_mode
-        print(f"Generating PDSMs. Keepign {top_k} phonemes")
+        print(f"Generating PDSMs. Keeping {top_k} phonemes")
         k_top_phon, maxed_out = run_batch(
             saliency_dir,
             ppgs_dir,
@@ -116,7 +125,7 @@ def experiment_phon_in_mask(max_k=1000, starting_k=1, saliency_dir="", ppgs_dir=
             print(f"Maxed out at top_k={top_k}. Ending experiment.")
             break
     
-    if maxed_out and clean_temp:
+    if (maxed_out or top_k==max_k) and clean_temp:
         print("Experiment completed successfully. Cleaning up temp csv files...")
         pattern = os.path.join(output_dir, "**", "TEMP*.csv")
         for file_path in glob.iglob(pattern, recursive=True):
@@ -150,14 +159,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--M_path", type=str, required=True, help="Path to saliency maps", default="data/saliencies")
     parser.add_argument("--X_p_path", type=str, required=True, help="Path to PPG .pt files", default="data/ppg_out")
-    parser.add_argument("--k", type=int, default=0.25, help="Number of phonemes to keep. Defaults to 1/4 of total")
+    parser.add_argument("--k", type=float, default=0.25, help="Number of phonemes to keep. Defaults to 1/4 of total")
     parser.add_argument("--pdsm_save_dir", type=str, default="data/pdsm_out", help="Where to save output")
     parser.add_argument("--save_pt",  action="store_true")
     parser.add_argument("--use_existing_pdsm",  action="store_true", help="Use existing PDSM .pt files instead of regenerating them")
     parser.add_argument("--experiment",
                         type=str,
-                        choices=["default", "preprocess_pool", "phoneme_duration", "best_topk"],
-                        default="default",
+                        choices=["single", "preprocess_pool", "phoneme_duration", "best_topk"],
+                        default="single",
                         help="Select which experiment configuration to run."
                     )
     args = parser.parse_args()
@@ -169,14 +178,18 @@ def main():
     elif args.experiment == "phoneme_duration":
         pass
     elif args.experiment == "best_topk":
+        
         experiment_phon_in_mask(
             saliency_dir=args.M_path,
             ppgs_dir=args.X_p_path,
             output_dir=args.pdsm_save_dir,
             save_pt=args.save_pt,
+            max_k=args.k
         )
-    else: # default options
-        run_batch(args.M_path, args.X_p_path, args.k, args.pdsm_save_dir, "threshold", "sum", args.save_pt)
+    else: # experiment == "single"
+        k_top_phon, _ = run_batch(args.M_path, args.X_p_path, args.k, args.pdsm_save_dir
+                                , "threshold", "sum", save_pt=args.save_pt, save_csv=True, verbose=True)
+        run_faithfulness(Path(args.M_path), Path( args.X_p_path), Path(args.pdsm_save_dir), k_top_phon)
     
 
 if __name__ == "__main__":

@@ -342,7 +342,7 @@ def generate_pdsms(subject_ids, saliency_dir, ppg_dir, output_dir, top_k=0.25):
                 ).squeeze(0).squeeze(0)
             
             print(f"  Processing {subject}...")
-            Mc, _ = phoneme_discretization(M, X_p, k=top_k)
+            Mc, _, _ = phoneme_discretization(M, X_p, k=top_k)
             
             torch.save(Mc, pdsm_path)
             print(f"  Saved: {subject}.pt")
