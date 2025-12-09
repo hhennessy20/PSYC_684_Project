@@ -478,6 +478,102 @@ def print_results(all_results, include_pdsm=True):
             print(f"{'STD':<10} {np.std(gs_scores):>12.4f}")
     
     print("-" * 60)
+    
+    
+    
+def run_faithfulness(saliency_dir, ppg_dir, pdsm_dir, model_path, gradshap_dir, no_generate, skip_pdsm, top_k, output):
+    
+    subject_ids = []
+    
+    # Step 1: Check/generate saliency maps
+    existing_specs = list(saliency_dir.glob("*_spec.pt")) if saliency_dir.exists() else []
+    
+    if existing_specs:
+        subject_ids = [f.stem.replace("_spec", "") for f in existing_specs]
+        print(f"\nFound {len(subject_ids)} existing saliency maps in {saliency_dir}")
+    elif not no_generate:
+        print(f"\nNo saliency maps found. Generating...")
+        subject_ids = generate_saliency_maps(saliency_dir, model_path, DEVICE)
+    else:
+        print(f"\nNo saliency maps found in {saliency_dir}")
+        return
+    
+    if not subject_ids:
+        print("No subjects to process.")
+        return
+    
+    # Step 2: Generate PPGs and PDSMs if needed (and not skipping PDSM)
+    if not skip_pdsm and not no_generate:
+        # Check for existing PPGs
+        existing_ppgs = list(ppg_dir.glob("*.pt")) if ppg_dir.exists() else []
+        existing_ppg_subjects = {f.stem for f in existing_ppgs}
+        missing_ppg_subjects = [s for s in subject_ids if s not in existing_ppg_subjects]
+        
+        if missing_ppg_subjects:
+            print(f"\n{len(missing_ppg_subjects)} subjects missing PPGs. Generating...")
+            generate_ppgs_for_subjects(missing_ppg_subjects, ppg_dir, DEVICE)
+        
+        # Check for existing PDSMs
+        existing_pdsms = list(pdsm_dir.glob("*.pt")) if pdsm_dir.exists() else []
+        existing_pdsm_subjects = {f.stem for f in existing_pdsms}
+        missing_pdsm_subjects = [s for s in subject_ids if s not in existing_pdsm_subjects]
+        
+        if missing_pdsm_subjects:
+            print(f"\n{len(missing_pdsm_subjects)} subjects missing PDSMs. Generating...")
+            generate_pdsms(missing_pdsm_subjects, saliency_dir, ppg_dir, pdsm_dir, top_k)
+    
+    # Step 3: Load model for faithfulness computation
+    print(f"\nLoading model from {model_path}")
+    model, window_frames = load_model(model_path, DEVICE)
+    print(f"  Using window size: {window_frames} frames")
+    
+    # Compute faithfulness for each subject
+    print(f"\nComputing faithfulness...")
+    
+    all_results = []
+    for sid in subject_ids:
+        result = compute_faithfulness_for_subject(
+            sid, saliency_dir, gradshap_dir, pdsm_dir, model, window_frames, DEVICE,
+        )
+        if result:
+            all_results.append(result)
+            gs = result.get("gradshap")
+            pdsm = result.get("pdsm")
+            
+            status = f"{sid}: "
+            if gs:
+                status += f"GS={gs['faithfulness']:.4f}"
+            if pdsm:
+                status += f" PDSM={pdsm['faithfulness']:.4f}"
+            print(status)
+    
+    # Step 5: Print results
+    include_pdsm = pdsm_dir is not None and any(r.get("pdsm") for r in all_results)
+    print_results(all_results, include_pdsm=include_pdsm)
+    
+    # Optionally save to CSV
+    if output:
+        import csv
+        with open(output, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                "subject", 
+                "gradshap_ff", "gradshap_p_orig", "gradshap_p_masked",
+                "pdsm_ff", "pdsm_p_orig", "pdsm_p_masked"
+            ])
+            for r in all_results:
+                gs = r.get("gradshap") or {}
+                pdsm = r.get("pdsm") or {}
+                writer.writerow([
+                    r["subject"],
+                    gs.get("faithfulness", ""),
+                    gs.get("p_original", ""),
+                    gs.get("p_masked", ""),
+                    pdsm.get("faithfulness", ""),
+                    pdsm.get("p_original", ""),
+                    pdsm.get("p_masked", ""),
+                ])
+        print(f"\nResults saved to {output}")
 
 
 def main():
@@ -533,97 +629,18 @@ def main():
     ppg_dir = Path(args.ppg_dir or PPG_DIR)
     pdsm_dir = Path(args.pdsm_dir or PDSM_DIR) if not args.skip_pdsm else None
     
-    subject_ids = []
+    run_faithfulness(
+        saliency_dir,
+        ppg_dir,
+        pdsm_dir,
+        model_path,
+        gradshap_dir,
+        args.no_generate,
+        args.skip_pdsm,
+        args.top_k,
+        args.output,
+    )
     
-    # Step 1: Check/generate saliency maps
-    existing_specs = list(saliency_dir.glob("*_spec.pt")) if saliency_dir.exists() else []
-    
-    if existing_specs:
-        subject_ids = [f.stem.replace("_spec", "") for f in existing_specs]
-        print(f"\nFound {len(subject_ids)} existing saliency maps in {saliency_dir}")
-    elif not args.no_generate:
-        print(f"\nNo saliency maps found. Generating...")
-        subject_ids = generate_saliency_maps(saliency_dir, model_path, DEVICE)
-    else:
-        print(f"\nNo saliency maps found in {saliency_dir}")
-        return
-    
-    if not subject_ids:
-        print("No subjects to process.")
-        return
-    
-    # Step 2: Generate PPGs and PDSMs if needed (and not skipping PDSM)
-    if not args.skip_pdsm and not args.no_generate:
-        # Check for existing PPGs
-        existing_ppgs = list(ppg_dir.glob("*.pt")) if ppg_dir.exists() else []
-        existing_ppg_subjects = {f.stem for f in existing_ppgs}
-        missing_ppg_subjects = [s for s in subject_ids if s not in existing_ppg_subjects]
-        
-        if missing_ppg_subjects:
-            print(f"\n{len(missing_ppg_subjects)} subjects missing PPGs. Generating...")
-            generate_ppgs_for_subjects(missing_ppg_subjects, ppg_dir, DEVICE)
-        
-        # Check for existing PDSMs
-        existing_pdsms = list(pdsm_dir.glob("*.pt")) if pdsm_dir.exists() else []
-        existing_pdsm_subjects = {f.stem for f in existing_pdsms}
-        missing_pdsm_subjects = [s for s in subject_ids if s not in existing_pdsm_subjects]
-        
-        if missing_pdsm_subjects:
-            print(f"\n{len(missing_pdsm_subjects)} subjects missing PDSMs. Generating...")
-            generate_pdsms(missing_pdsm_subjects, saliency_dir, ppg_dir, pdsm_dir, args.top_k)
-    
-    # Step 3: Load model for faithfulness computation
-    print(f"\nLoading model from {model_path}")
-    model, window_frames = load_model(model_path, DEVICE)
-    print(f"  Using window size: {window_frames} frames")
-    
-    # Compute faithfulness for each subject
-    print(f"\nComputing faithfulness...")
-    
-    all_results = []
-    for sid in subject_ids:
-        result = compute_faithfulness_for_subject(
-            sid, saliency_dir, gradshap_dir, pdsm_dir, model, window_frames, DEVICE,
-        )
-        if result:
-            all_results.append(result)
-            gs = result.get("gradshap")
-            pdsm = result.get("pdsm")
-            
-            status = f"{sid}: "
-            if gs:
-                status += f"GS={gs['faithfulness']:.4f}"
-            if pdsm:
-                status += f" PDSM={pdsm['faithfulness']:.4f}"
-            print(status)
-    
-    # Step 5: Print results
-    include_pdsm = pdsm_dir is not None and any(r.get("pdsm") for r in all_results)
-    print_results(all_results, include_pdsm=include_pdsm)
-    
-    # Optionally save to CSV
-    if args.output:
-        import csv
-        with open(args.output, "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                "subject", 
-                "gradshap_ff", "gradshap_p_orig", "gradshap_p_masked",
-                "pdsm_ff", "pdsm_p_orig", "pdsm_p_masked"
-            ])
-            for r in all_results:
-                gs = r.get("gradshap") or {}
-                pdsm = r.get("pdsm") or {}
-                writer.writerow([
-                    r["subject"],
-                    gs.get("faithfulness", ""),
-                    gs.get("p_original", ""),
-                    gs.get("p_masked", ""),
-                    pdsm.get("faithfulness", ""),
-                    pdsm.get("p_original", ""),
-                    pdsm.get("p_masked", ""),
-                ])
-        print(f"\nResults saved to {args.output}")
 
 
 if __name__ == "__main__":
