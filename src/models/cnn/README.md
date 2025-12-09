@@ -1,3 +1,3 @@
-In order to run, make sure train_adress_cnn.py is placed in the same folder as the diarized train folder from the ADReSS dataset.
+In order to run, make sure the data folder from the cloned repository is replaced with the data folder uploaded to Google Drive available here:
 
-Make sure to unzip best_adress_model.pt and place it in the same folder as interpret_gradshap_adress.py in order to use.
+https://drive.google.com/file/d/1CNYA4q0OaHhzcfWrHqqqJhw-zDL_gAfM/view?usp=sharing
