@@ -29,6 +29,7 @@ def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode="thresh
     maxed_out = False
     os.makedirs(output_dir, exist_ok=True)
     k = top_k
+    print(f"Running PDSM batch with k={k}, preprocess_mode={preprocess_mode}, pool_mode={pool_mode}")
     for M_path in saliency_map_paths:
         patientID = os.path.splitext(os.path.basename(M_path))[0][:4] # first 4 chars are patient id
         ppg_path = ""
@@ -54,9 +55,6 @@ def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode="thresh
             
         all_phonemes.extend(selected_phonemes)
         
-        if k == 0:
-            k = len(selected_phonemes)
-            
         processed_ctr += 1
         
         # Save output
@@ -85,7 +83,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--M_path", type=str, required=True, help="Path to saliency maps", default="data/saliencies")
     parser.add_argument("--X_p_path", type=str, required=True, help="Path to PPG .pt files", default="data/ppg_out")
-    parser.add_argument("--k", type=int, default=0, help="Number of phonemes to keep. Defaults to 1/4 of total")
+    parser.add_argument("--k", type=float, default=.1, help="Number of phonemes to keep. Defaults to 1/10 of total")
     parser.add_argument("--save_dir", type=str, default="data/pdsm_out", help="Where to save output")
     parser.add_argument("--save_pt",  action="store_true")
     args = parser.parse_args()

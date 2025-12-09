@@ -1,4 +1,5 @@
 
+from datetime import datetime
 import glob
 import argparse, os
 from pathlib import Path
@@ -159,7 +160,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--M_path", type=str, required=True, help="Path to saliency maps", default="data/saliencies")
     parser.add_argument("--X_p_path", type=str, required=True, help="Path to PPG .pt files", default="data/ppg_out")
-    parser.add_argument("--k", type=float, default=0.25, help="Number of phonemes to keep. Defaults to 1/4 of total")
+    parser.add_argument("--k", type=float, default=0.1, help="Number of phonemes to keep. Defaults to 1/10 of total")
+    parser.add_argument("--threshold_val", type=float, default=0, help="Threshold value for preprocess_mode='threshold'")
     parser.add_argument("--pdsm_save_dir", type=str, default="data/pdsm_out", help="Where to save output")
     parser.add_argument("--save_pt",  action="store_true")
     parser.add_argument("--use_existing_pdsm",  action="store_true", help="Use existing PDSM .pt files instead of regenerating them")
@@ -187,9 +189,14 @@ def main():
             max_k=args.k
         )
     else: # experiment == "single"
-        k_top_phon, _ = run_batch(args.M_path, args.X_p_path, args.k, args.pdsm_save_dir
-                                , "threshold", "sum", save_pt=args.save_pt, save_csv=True, verbose=True)
-        run_faithfulness(Path(args.M_path), Path( args.X_p_path), Path(args.pdsm_save_dir), k_top_phon)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_dir = Path(args.pdsm_save_dir) / timestamp
+        run_dir.mkdir(parents=True, exist_ok=True)
+        
+        k_top_phon, _ = run_batch(args.M_path, args.X_p_path, args.k, run_dir
+                                , "threshold", "sum", args.threshold_val, save_pt=args.save_pt, save_csv=True, verbose=True)
+        run_faithfulness(Path(args.M_path), Path( args.X_p_path), Path(run_dir), k_top_phon, csv_output_fn=run_dir / "faithfulness_results.csv")
     
 
 if __name__ == "__main__":

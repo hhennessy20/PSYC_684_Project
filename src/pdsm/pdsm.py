@@ -162,7 +162,7 @@ def get_phoneme_boundaries(X_ep):
     return boundaries
 
 
-def phoneme_discretization(M, X_p, k=.25, preprocess_mode="threshold", threshold_val=0, pool_mode="sum", verbose=True):
+def phoneme_discretization(M, X_p, k=.1, preprocess_mode="threshold", threshold_val=0, pool_mode="sum", verbose=True):
     """
     Core algorithm.
     Inputs:
@@ -194,7 +194,11 @@ def phoneme_discretization(M, X_p, k=.25, preprocess_mode="threshold", threshold
             maxed_out = True
             
         if isinstance(k, float):
-            k = min(int(k*len(boundaries)), len(boundaries))
+            
+            if k <= 1.0:
+                k = min(int(k*len(boundaries)), len(boundaries))
+            else:
+                k = min(int(k), len(boundaries))
             
         else:
             k = min(k, len(boundaries))
@@ -204,27 +208,40 @@ def phoneme_discretization(M, X_p, k=.25, preprocess_mode="threshold", threshold
 
     # Step 5: select top-k phonemes by energy
     top_k_indices = np.argsort(energies)[-k:]
+    
+    rejected_phonemes = np.argsort(energies)[:-k]
 
     # Step 6: initialize output
     Mc = torch.zeros_like(M)
 
     # Step 7: fill mask & track labels
     if verbose: print("Binarizing")
-    selected_phonemes = []
+    phonemes = []
     for idx in top_k_indices:
         p, s, e = boundaries[idx]
         Mc[:, s:e] = 1.0
-        selected_phonemes.append({
+        phonemes.append({
             "phoneme_id": int(p),
             "phoneme_label": PHONEMES[int(p)],
             "start_frame": int(s),
-            "end_frame": int(e)
+            "end_frame": int(e),
+            "selected": True
+        })
+    
+    for idx in rejected_phonemes:
+        p, s, e = boundaries[idx]
+        phonemes.append({
+            "phoneme_id": int(p),
+            "phoneme_label": PHONEMES[int(p)],
+            "start_frame": int(s),
+            "end_frame": int(e),
+            "selected": False
         })
 
     # Sort segments by start time for clean plotting
-    selected_phonemes.sort(key=lambda x: x["start_frame"])
+    phonemes.sort(key=lambda x: x["start_frame"])
 
-    return Mc, selected_phonemes, maxed_out
+    return Mc, phonemes, maxed_out
 
 
 def crop_tensors(spec, M, X_p, crop_fraction):

@@ -49,7 +49,8 @@ def visualize_best_topk(csv_fn):
     plt.legend()
     
     # Save figure
-    plt.savefig("faithfulness_vs_topk.png", bbox_inches="tight")
+    save_folder = os.path.dirname(csv_fn)
+    plt.savefig(f"{save_folder}\\faithfulness_vs_topk.png", bbox_inches="tight")
     plt.close()
     
     
@@ -60,7 +61,8 @@ def plot_phoneme_hist(csv_fn, keep_silence):
         "phoneme_id": int,
         "phoneme_label": str,
         "start_frame": int,
-        "end_frame": int
+        "end_frame": int,
+        "selected": bool
     })
         
         csv_fn = f"{experiment_name}_k{k}_selected_phonemes.csv" if experiment_name else f"k{k}_selected_phonemes.csv"
@@ -68,14 +70,14 @@ def plot_phoneme_hist(csv_fn, keep_silence):
     
     base_name = csv_fn.removesuffix("_selected_phonemes.csv")
     
-    k = int(base_name.split("_k")[-1])
+    k = base_name.split("k")[-1]
     
     selected_phonemes = pd.read_csv(csv_fn).to_dict(orient='records')
     
     if keep_silence:
-        phoneme_counts = Counter(p['phoneme_id'] for p in selected_phonemes)
+        phoneme_counts = Counter(p['phoneme_id'] for p in selected_phonemes if p['selected'])
     else:
-        phoneme_counts = Counter(p['phoneme_id'] for p in selected_phonemes if  PHONEMES[p['phoneme_id']] != pypar.SILENCE)
+        phoneme_counts = Counter(p['phoneme_id'] for p in selected_phonemes if p['selected'] and PHONEMES[p['phoneme_id']] != pypar.SILENCE)
 
     # Sort by frequency descending
     sorted_items = sorted(phoneme_counts.items(), key=lambda x: x[1], reverse=True)
@@ -95,6 +97,79 @@ def plot_phoneme_hist(csv_fn, keep_silence):
     plt.tight_layout()
     plt.savefig(f"{base_name}_phoneme_histogram.png")
     
+    
+def plot_phoneme_flag_rate(csv_fn, keep_silence):
+
+    df = pd.read_csv(csv_fn)
+
+    print("Calculating phoneme flag rates from", csv_fn)
+    # Optionally remove silence rows before any counting
+    if not keep_silence:
+        df = df[df["phoneme_label"] != pypar.SILENCE]
+
+    # Count total occurrences per phoneme
+    total_counts = df.groupby("phoneme_label").size()
+
+    # Count flagged occurrences per phoneme
+    flagged_counts = df[df["selected"]].groupby("phoneme_label").size()
+
+    # Compute flag rate (fill missing flagged counts with zero)
+    flag_rate = flagged_counts.reindex(total_counts.index, fill_value=0) / total_counts
+
+    # Sort by flag rate
+    flag_rate = flag_rate.sort_values(ascending=False)
+
+    # Plot
+    
+    plt.figure(figsize=(14, 6))
+    plt.bar(flag_rate.index, flag_rate.values)
+    plt.xlabel("Phoneme")
+    plt.ylabel("Flag Rate (Proportion Flagged)")
+    plt.title("Phoneme Flag Rate (selection normalized by occurrence frequency)")
+    plt.xticks(rotation=90)
+    plt.ylim(0, 1)  # rates are probabilities
+    plt.tight_layout()
+
+    base_name = csv_fn.removesuffix("_selected_phonemes.csv")
+    save_path = f"{base_name}_phoneme_flag_rate.png"
+    print(f"Saving phoneme flag rate plot to {save_path}")
+    plt.savefig(save_path)
+    plt.close()
+    
+    
+def plot_phoneme_duration_hist(csv_fn):
+    # Load CSV
+    df = pd.read_csv("phonemes.csv")
+
+    # Compute duration
+    df["duration"] = df["end_frame"] - df["start_frame"]
+
+    # Split by selection flag
+    df_selected = df[df["selected"] == True]
+    df_unselected = df[df["selected"] == False]
+    
+    # ---- 1️⃣ Distribution for selected phonemes ---- #
+    plt.figure(figsize=(8, 5))
+    plt.hist(df_selected["duration"], bins=30, color="blue", alpha=0.7)
+    plt.title("Duration Distribution of Selected Phonemes")
+    plt.xlabel("Duration (frames)")
+    plt.ylabel("Count")
+    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.tight_layout()
+    plt.savefig("selected_phonemes_duration.png")
+    plt.close()
+    
+    # ---- 3️⃣ Distribution for all phonemes ---- #
+    plt.figure(figsize=(8, 5))
+    plt.hist(df["duration"], bins=30, color="green", alpha=0.7)
+    plt.title("Duration Distribution of All Phonemes")
+    plt.xlabel("Duration (frames)")
+    plt.ylabel("Count")
+    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.tight_layout()
+    plt.savefig("all_phonemes_duration.png")
+    plt.close()
+    
 
 def main():
     parser = argparse.ArgumentParser()
@@ -102,12 +177,17 @@ def main():
 
     # ---- Subparser: phoneme_duration_hist ----
     p_pdh = subparsers.add_parser("phoneme_duration_hist", help="Plot phoneme duration histogram")
-    p_pdh.add_argument("--csv_input", type=str, required=True, help="CSV file with durations")
+    p_pdh.add_argument("--csv_input", type=str, required=True, help="CSV file with selected phonemes")
 
     # ---- Subparser: phoneme_freq ----
     p_pf = subparsers.add_parser("phoneme_freq", help="Plot phoneme frequency")
-    p_pf.add_argument("--csv_input", type=str, required=True, help="CSV file with frequencies")
+    p_pf.add_argument("--csv_input", type=str, required=True, help="CSV file with selected phonemes")
     p_pf.add_argument("--keep_silence",  action="store_true")
+    
+     # ---- Subparser: phon_flag_rate ----
+    p_pfr = subparsers.add_parser("phon_flag_rate", help="Plot phoneme flag rate")
+    p_pfr.add_argument("--csv_input", type=str, required=True, help="CSV file with selected phonemes")
+    p_pfr.add_argument("--keep_silence",  action="store_true")
 
     # ---- Subparser: best_topk ----
     p_topk = subparsers.add_parser("best_topk", help="Run best_topk experiment")
@@ -122,6 +202,8 @@ def main():
         pass
     elif args.experiment == "phoneme_freq":
         plot_phoneme_hist(args.csv_input, args.keep_silence)
+    elif args.experiment == "phon_flag_rate":
+        plot_phoneme_flag_rate(args.csv_input, args.keep_silence)
     elif args.experiment == "best_topk":
         visualize_best_topk(args.csv_input)
     
