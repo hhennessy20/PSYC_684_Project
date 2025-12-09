@@ -40,11 +40,13 @@ def plot_phoneme_hist(selected_phonemes, tot_samples, out_file, k):
     plt.savefig(out_file)
 
 
-def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode, pool_mode, save_pt=False, experiment_name=""):
+def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode="threshold", pool_mode="sum"
+              , threshold_val=0, save_pt=False, experiment_name="", save_hist=False):
     saliency_map_paths = sorted(Path(saliency_dir).glob("*_M.pt"))
     ppg_paths = sorted(Path(ppgs_dir).glob("*.pt"))
     all_phonemes = []
     processed_ctr = 0
+    maxed_out = False
     os.makedirs(output_dir, exist_ok=True)
     k = top_k
     for M_path in saliency_map_paths:
@@ -62,11 +64,19 @@ def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode, pool_m
         X_p = torch.load(ppg_path)    # expected shape [N, T]
         
         # Run algorithm
-        Mc, selected_phonemes = phoneme_discretization(M, X_p, top_k, preprocess_mode, pool_mode)
+        Mc, selected_phonemes, hit_max_phonemes = phoneme_discretization(M, X_p, top_k, preprocess_mode, threshold_val, pool_mode)
         
+        # Set true once, stop once we max out on first sample.
+        # Only want to run PDSM if we will get data for all samples
+        if not maxed_out and hit_max_phonemes:
+            maxed_out = maxed_out
+        
+            
         all_phonemes.extend(selected_phonemes)
+        
         if k == 0:
             k = len(selected_phonemes)
+            
         processed_ctr += 1
         
         # Save output
@@ -80,11 +90,13 @@ def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode, pool_m
             torch.save(Mc, out_file)
             print(f"Saved binarized phoneme discretized saliency map to {out_file}")
     
-    # change cc <-> cd depending on input
-    hist_fn = f"{experiment_name}_phoneme_hist_nosilence_k{k}.png" if experiment_name else f"phoneme_hist_nosilence_k{k}.png"
-    plot_phoneme_hist(all_phonemes,processed_ctr, os.path.join(output_dir, hist_fn), top_k)
+    if save_hist:
+        
+        hist_fn = f"{experiment_name}_phoneme_hist_nosilence_k{k}.png" if experiment_name else f"phoneme_hist_nosilence_k{k}.png"
+        plot_phoneme_hist(all_phonemes,processed_ctr, os.path.join(output_dir, hist_fn), k)
     
-    return k
+    # helpful for Faithfulness vs top_k experiment. 
+    return k, maxed_out
     
     
 def main():

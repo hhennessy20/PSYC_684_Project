@@ -286,7 +286,7 @@ def generate_ppgs_for_subjects(subject_ids, output_dir, device=DEVICE):
     return generated
 
 
-def generate_pdsms(subject_ids, saliency_dir, ppg_dir, output_dir, top_k=0):
+def generate_pdsms(subject_ids, saliency_dir, ppg_dir, output_dir, top_k=0.25):
     """Generate PDSMs for specified subjects. Requires 'ppgs' library."""
     try:
         from pdsm import phoneme_discretization
@@ -481,7 +481,8 @@ def print_results(all_results, include_pdsm=True):
     
     
     
-def run_faithfulness(saliency_dir, ppg_dir, pdsm_dir, top_k, gradshap_dir="", no_generate=False, skip_pdsm=False, model_path=MODEL_CKPT_PATH,  csv_output_fn="", val_split=0.2):
+def run_faithfulness(saliency_dir, ppg_dir, pdsm_dir, top_k, gradshap_dir="", no_generate=False
+                     , skip_pdsm=False, model_path=MODEL_CKPT_PATH,  csv_output_fn="", val_split=0.2, return_df=False):
     import random
     subject_ids = []
     
@@ -577,6 +578,23 @@ def run_faithfulness(saliency_dir, ppg_dir, pdsm_dir, top_k, gradshap_dir="", no
                     pdsm.get("p_masked", ""),
                 ])
         print(f"\nResults saved to {csv_output_fn}")
+    elif return_df:
+        import pandas as pd
+        data = []
+        for r in all_results:
+            gs = r.get("gradshap") or {}
+            pdsm = r.get("pdsm") or {}
+            data.append({
+                "subject": r["subject"],
+                "gradshap_ff": gs.get("faithfulness", None),
+                "gradshap_p_orig": gs.get("p_original", None),
+                "gradshap_p_masked": gs.get("p_masked", None),
+                "pdsm_ff": pdsm.get("faithfulness", None),
+                "pdsm_p_orig": pdsm.get("p_original", None),
+                "pdsm_p_masked": pdsm.get("p_masked", None),
+            })
+        df = pd.DataFrame(data)
+        return df
 
 
 def main():
@@ -609,7 +627,7 @@ def main():
         help="Output CSV file for results.",
     )
     parser.add_argument(
-        "--top_k", type=int, default=0,
+        "--top_k", type=int, default=0.25,
         help="Top-k phonemes for PDSM. Default: 1/4 of boundaries.",
     )
     parser.add_argument(

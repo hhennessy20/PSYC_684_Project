@@ -15,5 +15,12 @@ python .\src\pdsm\faithfulness.py --spec_dir data\full_output_diarized\saliencie
 
 === batch_pdsm.py === 
 
-Experiment for testing preprocess and pool functions
-python ./src/pdsm/batch_pdsm.py --M_path data/saliencies --X_p_path data/ppg_out --save_dir data/pdsm_out --save_pt --experiment preprocess_pool
+> Experiment for testing preprocess and pool functions
+
+python ./src/pdsm/pdsm_experiments.py --experiment preprocess_pool --M_path data/saliencies --X_p_path data/ppg_out --pdsm_save_dir data/pdsm_out --save_pt 
+
+python ./src/pdsm/pdsm_experiments.py --experiment preprocess_pool --M_path data\full_output_diarized\saliencies\cd --X_p_path data\full_output_diarized\ppg_out\cd --pdsm_save_dir src\pdsm\experiment_results\experiment_prepool_cd --save_pt 
+
+> Experiment for finding best top_k
+
+python ./src/pdsm/pdsm_experiments.py --experiment best_topk --M_path data\full_output_diarized\saliencies\cd --X_p_path data\full_output_diarized\ppg_out\cd --pdsm_save_dir src\pdsm\experiment_results\experiment_bestTopK_cd --save_pt 

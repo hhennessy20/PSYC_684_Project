@@ -162,13 +162,13 @@ def get_phoneme_boundaries(X_ep):
     return boundaries
 
 
-def phoneme_discretization(M, X_p, k=0, preprocess_mode="threshold", threshold_val=0, pool_mode="sum"):
+def phoneme_discretization(M, X_p, k=.25, preprocess_mode="threshold", threshold_val=0, pool_mode="sum"):
     """
     Core algorithm.
     Inputs:
         M: saliency map [F, T]
         X_p: PPG matrix [N, T]
-        k: number of phonemes to select. Default is 1/4 of all phonemes
+        k: number of phonemes to select. Default is 1/4 of all phonemes. If k=0, keep all phonemes.
     Output:
         Mc: phoneme discretized saliency map [F, T]
     """
@@ -186,8 +186,13 @@ def phoneme_discretization(M, X_p, k=0, preprocess_mode="threshold", threshold_v
     boundaries = get_phoneme_boundaries(X_ep)
 
     # Step 4: energy calculation per phoneme segment
+    maxed_out = False
     if k==0:
-        k = len(boundaries) // 4
+        k = len(boundaries)
+    else:
+        if k >= len(boundaries):
+            maxed_out = True
+        k = min(int(k*len(boundaries)), len(boundaries))
     print(f"Pooling energy per phoneme segment. Keeping {k} highest energy phonemes")
     energies = np.array([pool(Mf[:, s:e], pool_mode) for (_, s, e) in boundaries])
 
@@ -213,7 +218,7 @@ def phoneme_discretization(M, X_p, k=0, preprocess_mode="threshold", threshold_v
     # Sort segments by start time for clean plotting
     selected_phonemes.sort(key=lambda x: x["start"])
 
-    return Mc, selected_phonemes
+    return Mc, selected_phonemes, maxed_out
 
 
 def crop_tensors(spec, M, X_p, crop_fraction):
