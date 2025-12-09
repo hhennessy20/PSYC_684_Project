@@ -1,0 +1,4 @@
+=== batch_pdsm.py === 
+
+Experiment for testing preprocess and pool functions
+python ./src/pdsm/batch_pdsm.py --M_path data/saliencies --X_p_path data/ppg_out --save_dir data/pdsm_out --save_pt --experiment preprocess_pool

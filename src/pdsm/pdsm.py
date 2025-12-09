@@ -31,8 +31,6 @@ def plot_pdsm(M, Mc, spec, selected_phonemes, out_file_path, includeInputVisuals
       spec: original spectrogram [F, T]
       Mc: binary mask [F, T]
       selected_phonemes: list of phoneme dicts
-      alpha: transparency for overlay mask
-
     Output:
       Figure saved to out_file_path
     """
@@ -164,7 +162,7 @@ def get_phoneme_boundaries(X_ep):
     return boundaries
 
 
-def phoneme_discretization(M, X_p, k=0):
+def phoneme_discretization(M, X_p, k=0, preprocess_mode="threshold", pool_mode="sum"):
     """
     Core algorithm.
     Inputs:
@@ -177,7 +175,7 @@ def phoneme_discretization(M, X_p, k=0):
 
     # Step 1: preprocess
     print("Preprocessing")
-    Mf = preprocess(M)
+    Mf = preprocess(M, preprocess_mode)
     # Mf = M
 
     # Step 2: time-to-phoneme alignment
@@ -191,7 +189,7 @@ def phoneme_discretization(M, X_p, k=0):
     if k==0:
         k = len(boundaries) // 4
     print(f"Pooling energy per phoneme segment. Keeping {k} highest energy phonemes")
-    energies = np.array([pool(Mf[:, s:e]) for (_, s, e) in boundaries])
+    energies = np.array([pool(Mf[:, s:e], pool_mode) for (_, s, e) in boundaries])
 
     # Step 5: select top-k phonemes by energy
     top_k_indices = np.argsort(energies)[-k:]

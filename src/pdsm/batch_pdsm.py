@@ -34,24 +34,26 @@ def plot_phoneme_hist(selected_phonemes, tot_samples, out_file, k):
     plt.bar(labels, counts)
     plt.xlabel("Phoneme")
     plt.ylabel("Frequency")
-    plt.title(f"AD- Flagged Phoneme Histogram (k={k}, Across {tot_samples} WAV)")
+    plt.title(f"Flagged Phoneme Histogram (k={k}, Across {tot_samples} WAV)")
     plt.xticks(rotation=90)
     plt.tight_layout()
     plt.savefig(out_file)
 
 
-def run_batch(saliency_map_paths, ppg_paths, top_k, output_dir, preprocess_mode, pool_mode, save_pt=False):
-    
+def run_batch(saliency_map_paths, ppg_paths, top_k, output_dir, preprocess_mode, pool_mode, save_pt=False, experiment_name=""):
+    ppg_paths_cpy = ppg_paths.copy()
     all_phonemes = []
     processed_ctr = 0
+    os.makedirs(output_dir, exist_ok=True)
+    k = top_k
     for M_path in saliency_map_paths:
         patientID = os.path.splitext(os.path.basename(M_path))[0][:4] # first 4 chars are patient id
         ppg_path = ""
         
-        for i,p in enumerate(ppg_paths):
+        for i,p in enumerate(ppg_paths_cpy):
             if patientID in str(p):
                 ppg_path = p
-                ppg_paths.pop(i)
+                ppg_paths_cpy.pop(i)
                 break
         
         # Load inputs
@@ -59,10 +61,11 @@ def run_batch(saliency_map_paths, ppg_paths, top_k, output_dir, preprocess_mode,
         X_p = torch.load(ppg_path)    # expected shape [N, T]
         
         # Run algorithm
-        Mc, selected_phonemes = phoneme_discretization(M, X_p, top_k)
+        Mc, selected_phonemes = phoneme_discretization(M, X_p, top_k, preprocess_mode, pool_mode)
         
         all_phonemes.extend(selected_phonemes)
-        
+        if k == 0:
+            k = len(selected_phonemes)
         processed_ctr += 1
         
         # Save output
@@ -77,15 +80,16 @@ def run_batch(saliency_map_paths, ppg_paths, top_k, output_dir, preprocess_mode,
             print(f"Saved binarized phoneme discretized saliency map to {out_file}")
     
     # change cc <-> cd depending on input
-    plot_phoneme_hist(all_phonemes,processed_ctr, os.path.join(output_dir, f"cc_phoneme_hist_nosilence_k{top_k}.png"), top_k)
+    hist_fn = f"{experiment_name}_phoneme_hist_nosilence_k{k}.png" if experiment_name else f"phoneme_hist_nosilence_k{k}.png"
+    plot_phoneme_hist(all_phonemes,processed_ctr, os.path.join(output_dir, hist_fn), top_k)
     
-
+    
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--M_path", type=str, required=True, help="Path to saliency maps")
-    parser.add_argument("--X_p_path", type=str, required=True, help="Path to PPG .pt files")
+    parser.add_argument("--M_path", type=str, required=True, help="Path to saliency maps", default="data/saliencies")
+    parser.add_argument("--X_p_path", type=str, required=True, help="Path to PPG .pt files", default="data/ppg_out")
     parser.add_argument("--k", type=int, default=0, help="Number of phonemes to keep. Defaults to 1/4 of total")
-    parser.add_argument("--save_dir", type=str, default="src/pdsm/pdsm_out", help="Where to save output")
+    parser.add_argument("--save_dir", type=str, default="data/pdsm_out", help="Where to save output")
     parser.add_argument("--save_pt",  action="store_true")
     args = parser.parse_args()
     
