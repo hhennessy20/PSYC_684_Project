@@ -185,7 +185,7 @@ def plot_phoneme_duration_hist(csv_fn):
     })
     
     base_name = csv_fn.removesuffix("_selected_phonemes.csv")
-    # ---- 1️⃣ Distribution for selected phonemes ---- #
+    #  Distribution for selected phonemes ---- #
     plt.figure(figsize=(8, 5))
     plt.hist(df_selected["duration"], bins=100, color="blue", alpha=0.7)
     plt.title("Duration Distribution of Selected Phonemes")
@@ -219,18 +219,7 @@ def plot_phoneme_duration_hist(csv_fn):
     
     plot_duration_flag_rate(csv_fn)
     
-    # ---- 3️⃣ Distribution for all phonemes ---- #
-    # plt.figure(figsize=(8, 5))
-    # plt.hist(df["duration"], bins=100, color="green", alpha=0.7)
-    # plt.title("Duration Distribution of All Phonemes")
-    # plt.xlabel("Duration (frames)")
-    # plt.ylabel("Count")
-    # plt.grid(axis="y", linestyle="--", alpha=0.6)
-    # plt.tight_layout()
-    # save_path = f"{base_name}_all_phonemes_duration.png"
-    # plt.savefig(save_path)
-    # plt.close()
-
+    
 def plot_duration_flag_rate(csv_fn,  bin_size=20, max_duration=None):
     df = pd.read_csv(csv_fn)
 
