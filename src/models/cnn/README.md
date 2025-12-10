@@ -1,3 +1,1 @@
-In order to run, make sure the data folder from the cloned repository is replaced with the data folder uploaded to Google Drive available here:
-
-https://drive.google.com/file/d/1CNYA4q0OaHhzcfWrHqqqJhw-zDL_gAfM/view?usp=sharing
+In order to run, follow the steps indicated in the pdsm folder to create a new Conda environtment for pdsm. Once completed, running train_adress_cnn.py will create a cnn model and place it in the data folder. interpret_gradshap_adress.py will generate saliency map outputs for the top-k most confident positive and negative results in the validation sets, saving visualizations to the gradshap_val_plots folder.
