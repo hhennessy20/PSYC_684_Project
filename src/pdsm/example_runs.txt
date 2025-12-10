@@ -46,9 +46,12 @@ python ./src/pdsm/visualize.py best_topk --csv_input src\pdsm\experiment_results
 
 python ./src/pdsm/visualize.py phoneme_freq --csv_input src\pdsm\experiment_results\single_runs\20251209_140011\k0.25_selected_phonemes.csv
 
+python ./src/pdsm/visualize.py phoneme_freq --csv_input src\pdsm\experiment_results\single_runs\20251209_145425\k0.1_selected_phonemes.csv
+
 > Visualizing phoneme flag rate
 
 python ./src/pdsm/visualize.py phon_flag_rate --csv_input src\pdsm\experiment_results\single_runs\20251209_141631\k0.25_selected_phonemes.csv
+python ./src/pdsm/visualize.py phon_flag_rate --csv_input src\pdsm\experiment_results\single_runs\20251209_145425\k0.1_selected_phonemes.csv
 
 > Visualizing phoneme duration Distribution
 
