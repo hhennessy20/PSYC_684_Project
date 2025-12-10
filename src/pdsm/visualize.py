@@ -195,7 +195,26 @@ def plot_phoneme_duration_hist(csv_fn):
     plt.tight_layout()
     
     save_path = f"{base_name}_selected_phonemes_duration.png"
-    plt.savefig(save_path)
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+    
+    
+    # Phoneme duration plot
+    mean_duration = df.groupby("phoneme_label")["duration"].mean().sort_values(ascending=False)
+
+    plt.figure(figsize=(12, 6))
+    plt.bar(mean_duration.index, mean_duration.values, alpha=0.8)
+    plt.title("Mean Duration by Phoneme Label")
+    plt.xlabel("Phoneme Label")
+    plt.ylabel("Mean Duration (frames)")
+    plt.grid(axis="y", linestyle="--", alpha=0.5)
+
+    # Improve readability for many phonemes
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+
+    save_path = f"{base_name}_mean_duration_by_phoneme.png"
+    plt.savefig(save_path, dpi=300)
     plt.close()
     
     plot_duration_flag_rate(csv_fn)
@@ -212,12 +231,8 @@ def plot_phoneme_duration_hist(csv_fn):
     # plt.savefig(save_path)
     # plt.close()
 
-def plot_duration_flag_rate(csv_fn, keep_silence=True, bin_size=50, max_duration=None):
+def plot_duration_flag_rate(csv_fn,  bin_size=20, max_duration=None):
     df = pd.read_csv(csv_fn)
-
-    # Optionally remove silence
-    if not keep_silence:
-        df = df[df["phoneme_label"] != "SIL"]  # adjust token if needed
 
     # Compute duration
     df["duration"] = df["end_frame"] - df["start_frame"]
@@ -233,9 +248,10 @@ def plot_duration_flag_rate(csv_fn, keep_silence=True, bin_size=50, max_duration
     # Count total & selected in each bin
     total_counts = df.groupby("duration_bin").size()
     selected_counts = df[df["selected"]].groupby("duration_bin").size()
-
-    # Compute flag rate
     flag_rate = selected_counts.reindex(total_counts.index, fill_value=0) / total_counts
+
+    bin_centers = np.array([(interval.left + interval.right) / 2 for interval in flag_rate.index])
+
 
     # Plot setup for LaTeX two-column figures
     plt.rcParams.update({
@@ -247,13 +263,19 @@ def plot_duration_flag_rate(csv_fn, keep_silence=True, bin_size=50, max_duration
     })
 
     # Plot
-    plt.figure(figsize=(8, 6))
-    flag_rate.plot(kind="bar", alpha=0.8)
+    plt.figure(figsize=(8, 5))
+    plt.bar(bin_centers, flag_rate.values, width=bin_size * 0.9, alpha=0.8)
     plt.title("Selection Rate by Duration Bin")
-    plt.xlabel("Duration Range (frames)")
+    plt.xlabel("Duration (frames)")
     plt.ylabel("Selection Rate")
-    plt.ylim(0, 1)  # since rate is 0–1
+    plt.ylim(0, 1)
     plt.grid(axis="y", linestyle="--", alpha=0.6)
+
+    # Use fewer ticks for readability
+    tick_step = 250
+    major_ticks = np.arange(0, max_duration + tick_step, tick_step)
+    plt.xticks(major_ticks)
+
     plt.tight_layout()
     
     base_name = csv_fn.removesuffix("_selected_phonemes.csv")
