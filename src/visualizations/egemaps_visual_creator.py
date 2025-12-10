@@ -42,7 +42,7 @@ if __name__ == "__main__":
     save_fig(fig, "acoustic_fingerprint_heatmap_word_level.png")
 
     # 4) word timeline for one example file
-    example_file = word_df["file"].iloc[6120]
+    example_file = word_df["file"].iloc[6129]
     print(example_file)
     fig, (ax_w, ax_f) = plot_word_timeline(
         word_df,

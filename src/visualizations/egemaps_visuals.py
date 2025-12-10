@@ -283,6 +283,9 @@ def plot_word_timeline(
     midpoints = (df_file["start"].values + df_file["end"].values) / 2.0
     vals = df_file[feature].values
     ax_feat.plot(midpoints, vals, marker="o", linestyle="-")
+    ax_words.set_xlim(0, 90)
+    ax_feat.set_xlim(0, 90)
+
     ax_feat.set_ylabel(feature)
     ax_feat.set_xlabel("Time (s)")
 
