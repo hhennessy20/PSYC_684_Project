@@ -77,8 +77,8 @@ def plot_pdsm(M, Mc, spec, selected_phonemes, out_file_path, includeInputVisuals
 
     # Place text inside highlighted regions
     for entry in selected_phonemes:
-        start = entry["start"] + start_frame if start_frame is not None else entry["start"]
-        end = entry["end"] + start_frame if start_frame is not None else entry["end"]
+        start = entry["start_frame"] + start_frame if start_frame is not None else entry["start_frame"]
+        end = entry["end_frame"] + start_frame if start_frame is not None else entry["end_frame"]
         start_sec = start * frame_hop
         end_sec = end * frame_hop
         mid_sec = (start_sec + end_sec) / 2.0
@@ -216,21 +216,21 @@ def phoneme_discretization(M, X_p, k=.1, preprocess_mode="threshold", threshold_
 
     # Step 7: fill mask & track labels
     if verbose: print("Binarizing")
-    phonemes = []
+    selected_phonemes = []
     for idx in top_k_indices:
         p, s, e = boundaries[idx]
         Mc[:, s:e] = 1.0
-        phonemes.append({
+        selected_phonemes.append({
             "phoneme_id": int(p),
             "phoneme_label": PHONEMES[int(p)],
             "start_frame": int(s),
             "end_frame": int(e),
             "selected": True
         })
-    
+    rejected_phonemes = []
     for idx in rejected_phonemes:
         p, s, e = boundaries[idx]
-        phonemes.append({
+        rejected_phonemes.append({
             "phoneme_id": int(p),
             "phoneme_label": PHONEMES[int(p)],
             "start_frame": int(s),
@@ -239,9 +239,9 @@ def phoneme_discretization(M, X_p, k=.1, preprocess_mode="threshold", threshold_
         })
 
     # Sort segments by start time for clean plotting
-    phonemes.sort(key=lambda x: x["start_frame"])
+    selected_phonemes.sort(key=lambda x: x["start_frame"])
 
-    return Mc, phonemes, maxed_out
+    return Mc, selected_phonemes, maxed_out, rejected_phonemes
 
 
 def crop_tensors(spec, M, X_p, crop_fraction):
@@ -267,7 +267,7 @@ def main():
     parser.add_argument("--M_path", type=str, required=True, help="Path to saliency map .pt file")
     parser.add_argument("--X_p_path", type=str, required=True, help="Path to PPG .pt file")
     parser.add_argument("--Spec_path", type=str, required=True, help="Path to spectrogram .pt file")
-    parser.add_argument("--k", type=int, default=0, help="Number of phonemes to keep")
+    parser.add_argument("--k", type=float, default=0.1, help="Number of phonemes to keep")
     parser.add_argument("--save_dir", type=str, default="src/pdsm/pdsm_out", help="Where to save output")
     parser.add_argument("--crop_fraction", type=float, default=1.0, help="Amount of sample to crop. useful for creating legible figures")
     parser.add_argument(
@@ -286,7 +286,7 @@ def main():
         spec, M, X_p, start, end = crop_tensors(spec, M, X_p, args.crop_fraction)
 
     # Run algorithm
-    Mc, selected_phonemes = phoneme_discretization(M, X_p, args.k)
+    Mc, selected_phonemes, _, _ = phoneme_discretization(M, X_p, args.k)
 
     # Save output
     os.makedirs(args.save_dir, exist_ok=True)

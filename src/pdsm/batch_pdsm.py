@@ -45,7 +45,7 @@ def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode="thresh
         X_p = torch.load(ppg_path)    # expected shape [N, T]
         
         # Run algorithm
-        Mc, selected_phonemes, hit_max_phonemes = phoneme_discretization(M, X_p, top_k, preprocess_mode, threshold_val, pool_mode, verbose)
+        Mc, selected_phonemes, hit_max_phonemes, rejected_phonemes = phoneme_discretization(M, X_p, top_k, preprocess_mode, threshold_val, pool_mode, verbose)
         
         # Set true once, stop once we max out on first sample.
         # Only want to run PDSM if we will get data for all samples
@@ -53,7 +53,7 @@ def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode="thresh
             maxed_out = maxed_out
         
             
-        all_phonemes.extend(selected_phonemes)
+        all_phonemes.extend(selected_phonemes).extend(rejected_phonemes)
         
         processed_ctr += 1
         
