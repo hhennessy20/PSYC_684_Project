@@ -1,0 +1,55 @@
+=== faithfulness.py ===
+
+Generate outputs for ALL diarized wav files
+python .\src\pdsm\faithfulness.py --spec_dir data\full_output_diarized\saliencies --gradshap_dir data\full_output_diarized\saliencies --ppg_dir data\full_output_diarized\ppg_out --pdsm_dir data\full_output_diarized\pdsm_out --output faithfulness_ALLWAVS.csv --val_split 1.0
+
+>> Then i organized into cc and cd subdirectories manually before doing the next runs
+
+> Compute faithfulness for CC group
+python .\src\pdsm\faithfulness.py --spec_dir data\full_output_diarized\saliencies\cc --gradshap_dir data\full_output_diarized\saliencies\cc --ppg_dir data\full_output_diarized\ppg_out\cc --pdsm_dir data\full_output_diarized\pdsm_out\cc --output faithfulness_cc.csv 
+
+
+> Compute faithfulness for CD group
+python .\src\pdsm\faithfulness.py --spec_dir data\full_output_diarized\saliencies\cd --gradshap_dir data\full_output_diarized\saliencies\cd --ppg_dir data\full_output_diarized\ppg_out\cd --pdsm_dir data\full_output_diarized\pdsm_out\cd --output faithfulness_cd.csv
+
+
+=== pdsm_experiments.py === 
+
+> Experiment for testing preprocess and pool functions
+
+python ./src/pdsm/pdsm_experiments.py --experiment preprocess_pool --M_path data/saliencies --X_p_path data/ppg_out --pdsm_save_dir data/pdsm_out --save_pt 
+
+python ./src/pdsm/pdsm_experiments.py --experiment preprocess_pool --M_path data\full_output_diarized\saliencies\cd --X_p_path data\full_output_diarized\ppg_out\cd --pdsm_save_dir src\pdsm\experiment_results\experiment_prepool_cd --save_pt 
+
+> Experiment for finding best top_k
+
+python ./src/pdsm/pdsm_experiments.py --experiment best_topk --M_path data\full_output_diarized\saliencies\cd --X_p_path data\full_output_diarized\ppg_out\cd --pdsm_save_dir src\pdsm\experiment_results\experiment_bestTopK__fractional_cd --save_pt --k 1.0
+
+python ./src/pdsm/pdsm_experiments.py --experiment best_topk --M_path data\full_output_diarized\saliencies\cd --X_p_path data\full_output_diarized\ppg_out\cd --pdsm_save_dir src\pdsm\experiment_results\experiment_bestTopK_cd --save_pt --k 1000
+
+
+> Single run
+python ./src/pdsm/pdsm_experiments.py --experiment single --M_path data\full_output_diarized\saliencies\cd --X_p_path data\full_output_diarized\ppg_out\cd --pdsm_save_dir src\pdsm\experiment_results\single_runs --save_pt
+
+python ./src/pdsm/pdsm_experiments.py --experiment single --M_path data\full_output_diarized\saliencies\cc --X_p_path data\full_output_diarized\ppg_out\cc --pdsm_save_dir src\pdsm\experiment_results\single_runs --threshold_val -0 --save_pt 
+
+=== visualize.py ===
+
+> Visualizing graphs for Faithfulness vs top_k
+
+python ./src/pdsm/visualize.py best_topk --csv_input src\pdsm\experiment_results\experiment_bestTopK_cd\experiment_topk_ff_threshSum.csv
+
+python ./src/pdsm/visualize.py best_topk --csv_input src\pdsm\experiment_results\experiment_bestTopK__fractional_cd\experiment_topk_ff_threshSum.csv
+
+
+> Visualizing phoneme hist
+
+python ./src/pdsm/visualize.py phoneme_freq --csv_input src\pdsm\experiment_results\single_runs\20251209_140011\k0.25_selected_phonemes.csv
+
+> Visualizing phoneme flag rate
+
+python ./src/pdsm/visualize.py phon_flag_rate --csv_input src\pdsm\experiment_results\single_runs\20251209_141631\k0.25_selected_phonemes.csv
+
+> Visualizing phoneme duration Distribution
+
+python ./src/pdsm/visualize.py phoneme_duration_hist --csv_input src\pdsm\experiment_results\single_runs\20251209_145425\k0.1_selected_phonemes.csv
