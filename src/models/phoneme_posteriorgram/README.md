@@ -1,21 +1,40 @@
-# Dependencies
+# Phoneme Posteriorgram (PPG)
 
-pip install -r ppg_requirements.txt
+Generates phoneme posteriorgrams using Montreal Forced Aligner (MFA) for phoneme-level analysis.
 
-For MFA installation: https://montreal-forced-aligner.readthedocs.io/en/latest/getting_started.html
+## Setup
+
+```bash
+pip install -r src/models/phoneme_posteriorgram/ppg_requirements.txt
+```
+
+### MFA Installation
+
+Follow: https://montreal-forced-aligner.readthedocs.io/en/latest/getting_started.html
+
+Download required models:
+
+```bash
+mfa model download acoustic english_us_arpa
+mfa model download dictionary english_us_arpa
+```
 
 ## MFA Usage
 
-https://montreal-forced-aligner.readthedocs.io/en/latest/first_steps/index.html#first-steps-align-pretrained
+### 1. Validate
 
-1. Download models
-mfa model download acoustic english_us_arpa
-mfa model download dictionary english_us_arpa
+```bash
+mfa validate data/train_Data/Diarized_full_wave_enhanced_audio/cc english_us_arpa english_us_arpa
+```
 
-2. Validate
-mfa validate src/data/train/patient_audio_diarized/cc english_us_arpa english_us_arpa
+### 2. Align
 
-3. Align (example)
+```bash
+mfa align data/train_Data/Diarized_full_wave_enhanced_audio/cc english_us_arpa english_us_arpa data/MFA_output_cc_diarized
+mfa align data/train_Data/Diarized_full_wave_enhanced_audio/cd english_us_arpa english_us_arpa data/MFA_output_cd_diarized
+```
 
-mfa align src/data/train/patient_audio_diarized/cc english_us_arpa english_us_arpa src/data/train/patient_audio_diarized/cc/MFA_output
-mfa align src/data/train/patient_audio_diarized/cd english_us_arpa english_us_arpa src/data/train/patient_audio_diarized/cd/MFA_output
+## Output
+
+- `MFA/*.TextGrid` - Phoneme alignment files
+- `MFA/*.csv` - Alignment analysis
