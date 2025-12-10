@@ -31,7 +31,7 @@ python ./src/pdsm/pdsm_experiments.py --experiment best_topk --M_path data\full_
 > Single run
 python ./src/pdsm/pdsm_experiments.py --experiment single --M_path data\full_output_diarized\saliencies\cd --X_p_path data\full_output_diarized\ppg_out\cd --pdsm_save_dir src\pdsm\experiment_results\single_runs --save_pt
 
-python ./src/pdsm/pdsm_experiments.py --experiment single --M_path data\full_output_diarized\saliencies\cc --X_p_path data\full_output_diarized\ppg_out\cc --pdsm_save_dir src\pdsm\experiment_results\single_runs --threshold_val -0 --save_pt 
+python ./src/pdsm/pdsm_experiments.py --experiment single --M_path data\full_output_diarized\saliencies\cc --X_p_path data\full_output_diarized\ppg_out\cc --pdsm_save_dir src\pdsm\experiment_results\single_runs  --save_pt 
 
 === visualize.py ===
 
@@ -46,12 +46,17 @@ python ./src/pdsm/visualize.py best_topk --csv_input src\pdsm\experiment_results
 
 python ./src/pdsm/visualize.py phoneme_freq --csv_input src\pdsm\experiment_results\single_runs\20251209_140011\k0.25_selected_phonemes.csv
 
+> CD
 python ./src/pdsm/visualize.py phoneme_freq --csv_input src\pdsm\experiment_results\single_runs\20251209_145425\k0.1_selected_phonemes.csv
+> CC
+python ./src/pdsm/visualize.py phoneme_freq --csv_input src\pdsm\experiment_results\single_runs\20251209_221524\k0.1_selected_phonemes.csv
 
 > Visualizing phoneme flag rate
 
 python ./src/pdsm/visualize.py phon_flag_rate --csv_input src\pdsm\experiment_results\single_runs\20251209_141631\k0.25_selected_phonemes.csv
 python ./src/pdsm/visualize.py phon_flag_rate --csv_input src\pdsm\experiment_results\single_runs\20251209_145425\k0.1_selected_phonemes.csv
+>CC
+python ./src/pdsm/visualize.py phon_flag_rate --csv_input src\pdsm\experiment_results\single_runs\20251209_221524\k0.1_selected_phonemes.csv
 
 > Visualizing phoneme duration Distribution
 

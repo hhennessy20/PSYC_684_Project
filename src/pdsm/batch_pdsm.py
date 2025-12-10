@@ -53,7 +53,8 @@ def run_batch(saliency_dir, ppgs_dir, top_k, output_dir, preprocess_mode="thresh
             maxed_out = maxed_out
         
             
-        all_phonemes.extend(selected_phonemes).extend(rejected_phonemes)
+        all_phonemes.extend(selected_phonemes)
+        all_phonemes.extend(rejected_phonemes)
         
         processed_ctr += 1
         
