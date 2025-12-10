@@ -46,6 +46,22 @@ FEATURES_AGG_DIR = DATA_DIR / "features_agg"   # X, y, scaler, model, etc.
 
 LABELS_CSV = DATA_DIR / "labels_train.csv"
 
+MFA_CC_DIR = DATA_DIR / "MFA_output_cc_diarized"
+MFA_CD_DIR = DATA_DIR / "MFA_output_cd_diarized"
+
+MFA_CC_ALIGN_CSV = MFA_CC_DIR / "alignment_analysis.csv"
+MFA_CD_ALIGN_CSV = MFA_CD_DIR / "alignment_analysis.csv"
+
+# Output CSV for phoneme-level eGeMAPS (from diarized audio)
+WORD_EGEMAPS_CSV = DATA_DIR / "features" / "word_egemaps_diarized.csv"
+WORD_EGEMAPS_CSV.parent.mkdir(parents=True, exist_ok=True)
+
+PHONEME_EGEMAPS_CSV = DATA_DIR / "features" / "phoneme_egemaps_diarized.csv"
+PHONEME_EGEMAPS_CSV.parent.mkdir(parents=True, exist_ok=True)
+
+
+FIG_DIR = PROJECT_ROOT / "data" / "figures"
+FIG_DIR.mkdir(parents=True, exist_ok=True)
 MODELS_DIR = DATA_DIR / "models"
 MODEL_CKPT_PATH = MODELS_DIR / "best_adress_cnn.pt"
 
